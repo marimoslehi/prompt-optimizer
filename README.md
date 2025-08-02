@@ -8,6 +8,7 @@ Enterprise AI Testing Platform - Compare AI model responses, optimize costs, and
 - [Contributors](#contributors)
 - [Setup](#setup)
 - [Running the Project](#running-the-project)
+- [License](#license)
 
 ## Introduction
 
@@ -99,6 +100,19 @@ pnpm start
 - **Dashboard**: `http://localhost:3000/dashboard` - Main AI comparison interface
 - **Part-time Dashboard**: `http://localhost:3000/part-time` - Work management features
 - **Sign-in**: `http://localhost:3000/sign-in` - Authentication flow
+
+## License
+
+This project is licensed under the **Business Source License 1.1**.
+
+- ✅ **Free for non-commercial use** - Perfect for learning, personal projects, and small teams
+- ✅ **Source code available** - Full transparency and community contributions welcome
+- ⚠️ **Commercial use requires license** - Contact for enterprise licensing
+- 🔄 **Becomes open source in 4 years** - Ensuring long-term availability
+
+For commercial licensing inquiries, please contact: [your-email@domain.com]
+
+See the [LICENSE](LICENSE) file for full details.
 
 ---
 
