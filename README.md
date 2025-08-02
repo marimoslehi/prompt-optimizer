@@ -110,7 +110,7 @@ This project is licensed under the **Business Source License 1.1**.
 - ⚠️ **Commercial use requires license** - Contact for enterprise licensing
 - 🔄 **Becomes open source in 4 years** - Ensuring long-term availability
 
-For commercial licensing inquiries, please contact: [your-email@domain.com]
+For commercial licensing inquiries, please contact: moslehimari@gmail.com
 
 See the [LICENSE](LICENSE) file for full details.
 
