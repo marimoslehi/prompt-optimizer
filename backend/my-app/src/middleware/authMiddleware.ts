@@ -1,21 +1,53 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const secretKey = process.env.JWT_SECRET || 'your_secret_key';
-
-export const checkAuth = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ message: 'Authentication failed' });
+// Extend Request interface to include user
+declare global {
+    namespace Express {
+        interface Request {
+            user?: {
+                id: string;
+                email: string;
+                name: string;
+            };
+        }
     }
+}
 
-    jwt.verify(token, secretKey, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ message: 'Invalid token' });
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                message: 'No authorization header provided'
+            });
         }
 
-        req.user = decoded;
+        const token = authHeader.split(' ')[1]; // Bearer TOKEN
+        
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        const secretKey = process.env.JWT_SECRET || 'your_secret_key_change_this';
+        const decoded = jwt.verify(token, secretKey) as any;
+        
+        req.user = {
+            id: decoded.id,
+            email: decoded.email,
+            name: decoded.name
+        };
+
         next();
-    });
+    } catch (error: any) {
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid token'
+        });
+    }
 };
