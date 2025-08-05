@@ -5,6 +5,7 @@ Enterprise AI Testing Platform - Compare AI model responses, optimize costs, and
 ## Table of Contents
 - [Introduction](#introduction)
 - [Technology Used](#technology-used)
+- [Project Structure](#project-structure)
 - [Contributors](#contributors)
 - [Setup](#setup)
 - [Running the Project](#running-the-project)
@@ -27,14 +28,33 @@ With Prompt Optimizer, teams can easily test prompts across different AI provide
 - **Lucide React**: Icon library for consistent visual design
 
 ### Backend
-- **In Progress**: Backend development is currently underway
-- **Planned**: API integrations with OpenAI, Anthropic, and Google AI
+- **Node.js**: Runtime environment for server-side JavaScript
+- **Express.js**: Web framework for building REST APIs
+- **TypeScript**: Static typing for enhanced code quality
+- **PostgreSQL**: Primary database for data persistence
+- **JWT**: Authentication and authorization
+- **bcryptjs**: Password hashing for security
 
 ### Additional Tools
 - **pnpm**: Fast, disk space efficient package manager
 - **ESLint & Prettier**: Code formatting and linting for code quality
-- **Vercel**: Deployment platform optimized for Next.js applications
+- **Prisma**: Database ORM and migration tool
 - **Git**: Version control system
+
+## Project Structure
+
+\`\`\`
+promptOptimizer/
+├── backend/my-app/             # Node.js + Express + PostgreSQL
+│   ├── src/                    # Source code (controllers, services, routes)
+│   ├── prisma/                 # Database ORM
+│   └── .env                    # Backend config
+└── frontend/                   # Next.js + React + TypeScript
+    ├── app/                    # Pages (dashboard, auth, onboarding)
+    ├── components/             # UI components
+    ├── hooks/                  # API integration
+    └── .env.local              # Frontend config
+\`\`\`
 
 ## Contributors
 
@@ -44,62 +64,78 @@ With Prompt Optimizer, teams can easily test prompts across different AI provide
 
 ## Setup
 
-### Backend
-**In Progress** - Backend setup instructions will be available soon.
-
-### Frontend
-
-#### Prerequisites
+### Prerequisites
 - **Node.js** (v18 or higher)
-- **pnpm** (v8 or higher) - Install with `npm install -g pnpm`
+- **PostgreSQL** (v14 or higher)
+- **pnpm** (v8 or higher) - Install with \`npm install -g pnpm\`
 - **Git** for version control
 
-#### Installation
-```bash
-# Clone the repository
-git clone https://github.com/marimoslehi/prompt-optimizer.git
+### Backend Setup
 
-# Navigate to project directory
-cd prompt-optimizer
+\`\`\`bash
+# Install PostgreSQL (macOS)
+brew install postgresql
+brew services start postgresql
 
-# Install dependencies
+# Create database
+psql postgres
+CREATE USER promptuser WITH PASSWORD 'promptpass123';
+CREATE DATABASE promptoptimizer OWNER promptuser;
+GRANT ALL PRIVILEGES ON DATABASE promptoptimizer TO promptuser;
+\q
+
+# Navigate to backend and install
+cd backend/my-app
+npm install
+
+# Create .env file with database URL and JWT secret
+echo 'DATABASE_URL="postgresql://promptuser:promptpass123@localhost:5432/promptoptimizer"' > .env
+echo 'JWT_SECRET="'\$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")"' >> .env
+echo 'PORT=3001' >> .env
+\`\`\`
+
+### Frontend Setup
+
+\`\`\`bash
+# Navigate to frontend and install
+cd frontend
 pnpm install
-```
 
-#### Environment Configuration
-Create a `.env.local` file in the root directory:
-```bash
-# Future API integrations (when backend is ready)
-# OPENAI_API_KEY=your_openai_api_key_here
-# ANTHROPIC_API_KEY=your_anthropic_api_key_here
-# GOOGLE_AI_API_KEY=your_google_ai_api_key_here
-```
+# Create environment file
+echo 'NEXT_PUBLIC_API_URL=http://localhost:3001/api' > .env.local
+\`\`\`
 
 ## Running the Project
 
 ### Development Mode
-Start the development server:
-```bash
+
+**Start Backend:**
+\`\`\`bash
+cd backend/my-app
+npm run dev
+\`\`\`
+Backend available at \`http://localhost:3001\`
+
+**Start Frontend:**
+\`\`\`bash
+cd frontend
 pnpm dev
-```
-
-The application will be available at `http://localhost:3000`
-
-### Production Build
-Build and start the production version:
-```bash
-# Build the application
-pnpm build
-
-# Start production server
-pnpm start
-```
+\`\`\`
+Frontend available at \`http://localhost:3000\`
 
 ### Available Pages
-- **Home**: `http://localhost:3000/`
-- **Dashboard**: `http://localhost:3000/dashboard` - Main AI comparison interface
-- **Part-time Dashboard**: `http://localhost:3000/part-time` - Work management features
-- **Sign-in**: `http://localhost:3000/sign-in` - Authentication flow
+- **Home**: \`http://localhost:3000/\`
+- **Dashboard**: \`http://localhost:3000/dashboard\` - Main AI comparison interface
+- **Landing**: \`http://localhost:3000/landing\` - Marketing landing page
+- **Onboarding**: \`http://localhost:3000/onboarding\` - User onboarding flow
+- **Part-time Dashboard**: \`http://localhost:3000/part-time\` - Work management features
+- **Sign-in**: \`http://localhost:3000/sign-in\` - Authentication flow
+- **API Key Setup**: \`http://localhost:3000/api-key-setup\` - Configure AI API keys
+
+### API Health Check
+\`\`\`bash
+curl http://localhost:3001/api/health
+\`\`\`
 
 ## License
 
@@ -116,4 +152,4 @@ See the [LICENSE](LICENSE) file for full details.
 
 ---
 
-**Built for the AI community**
+**Built for the AI community** 🚀
