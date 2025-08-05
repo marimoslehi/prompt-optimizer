@@ -43,7 +43,7 @@ With Prompt Optimizer, teams can easily test prompts across different AI provide
 
 ## Project Structure
 
-\`\`\`
+```
 promptOptimizer/
 ├── backend/my-app/             # Node.js + Express + PostgreSQL
 │   ├── src/                    # Source code (controllers, services, routes)
@@ -54,7 +54,7 @@ promptOptimizer/
     ├── components/             # UI components
     ├── hooks/                  # API integration
     └── .env.local              # Frontend config
-\`\`\`
+```
 
 ## Contributors
 
@@ -67,12 +67,12 @@ promptOptimizer/
 ### Prerequisites
 - **Node.js** (v18 or higher)
 - **PostgreSQL** (v14 or higher)
-- **pnpm** (v8 or higher) - Install with \`npm install -g pnpm\`
+- **pnpm** (v8 or higher) - Install with `npm install -g pnpm`
 - **Git** for version control
 
 ### Backend Setup
 
-\`\`\`bash
+```bash
 # Install PostgreSQL (macOS)
 brew install postgresql
 brew services start postgresql
@@ -90,52 +90,52 @@ npm install
 
 # Create .env file with database URL and JWT secret
 echo 'DATABASE_URL="postgresql://promptuser:promptpass123@localhost:5432/promptoptimizer"' > .env
-echo 'JWT_SECRET="'\$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")"' >> .env
+echo 'JWT_SECRET="'$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")"' >> .env
 echo 'PORT=3001' >> .env
-\`\`\`
+```
 
 ### Frontend Setup
 
-\`\`\`bash
+```bash
 # Navigate to frontend and install
 cd frontend
 pnpm install
 
 # Create environment file
 echo 'NEXT_PUBLIC_API_URL=http://localhost:3001/api' > .env.local
-\`\`\`
+```
 
 ## Running the Project
 
 ### Development Mode
 
 **Start Backend:**
-\`\`\`bash
+```bash
 cd backend/my-app
 npm run dev
-\`\`\`
-Backend available at \`http://localhost:3001\`
+```
+Backend available at `http://localhost:3001`
 
 **Start Frontend:**
-\`\`\`bash
+```bash
 cd frontend
 pnpm dev
-\`\`\`
-Frontend available at \`http://localhost:3000\`
+```
+Frontend available at `http://localhost:3000`
 
 ### Available Pages
-- **Home**: \`http://localhost:3000/\`
-- **Dashboard**: \`http://localhost:3000/dashboard\` - Main AI comparison interface
-- **Landing**: \`http://localhost:3000/landing\` - Marketing landing page
-- **Onboarding**: \`http://localhost:3000/onboarding\` - User onboarding flow
-- **Part-time Dashboard**: \`http://localhost:3000/part-time\` - Work management features
-- **Sign-in**: \`http://localhost:3000/sign-in\` - Authentication flow
-- **API Key Setup**: \`http://localhost:3000/api-key-setup\` - Configure AI API keys
+- **Home**: `http://localhost:3000/`
+- **Dashboard**: `http://localhost:3000/dashboard` - Main AI comparison interface
+- **Landing**: `http://localhost:3000/landing` - Marketing landing page
+- **Onboarding**: `http://localhost:3000/onboarding` - User onboarding flow
+- **Part-time Dashboard**: `http://localhost:3000/part-time` - Work management features
+- **Sign-in**: `http://localhost:3000/sign-in` - Authentication flow
+- **API Key Setup**: `http://localhost:3000/api-key-setup` - Configure AI API keys
 
 ### API Health Check
-\`\`\`bash
+```bash
 curl http://localhost:3001/api/health
-\`\`\`
+```
 
 ## License
 
