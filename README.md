@@ -6,40 +6,43 @@ Enterprise AI Testing Platform - Compare AI model responses, optimize costs, and
 - [Introduction](#introduction)
 - [Technology Used](#technology-used)
 - [Project Structure](#project-structure)
-- [Contributors](#contributors)
+- [Prerequisites](#prerequisites)
 - [Setup](#setup)
 - [Running the Project](#running-the-project)
+- [Contributors](#contributors)
 - [License](#license)
 
 ## Introduction
 
-Prompt Optimizer is an innovative AI testing and optimization platform designed for businesses and developers who want to maximize the efficiency and cost-effectiveness of their AI implementations. This tool enables users to compare responses from multiple AI models side-by-side, track costs in real-time, and optimize their AI workflows for better performance and reduced expenses.
+Prompt Optimizer helps businesses and developers maximize AI efficiency and cost-effectiveness. 
 
-With Prompt Optimizer, teams can easily test prompts across different AI providers including OpenAI's GPT models, Anthropic's Claude, Google's Gemini, and more. The platform provides comprehensive analytics, cost tracking, and performance metrics to help organizations make data-driven decisions about their AI usage.
+**Key Features:**
+- Compare AI model responses side-by-side
+- Real-time cost tracking and analytics
+- Performance optimization across providers
+- Support for OpenAI, Anthropic, Google AI, and more
+
+Perfect for teams making data-driven AI decisions.
 
 ## Technology Used
 
 ### Frontend
-- **Next.js 15**: React framework with App Router for server-side rendering
-- **React 19**: Latest React version with concurrent features
-- **TypeScript**: Static typing for enhanced code quality
-- **Tailwind CSS**: Utility-first CSS framework for rapid UI development
-- **shadcn/ui**: High-quality, accessible React components
-- **Lucide React**: Icon library for consistent visual design
+- **Next.js 15** - React framework with App Router
+- **React 19** - Latest React with concurrent features
+- **TypeScript** - Static typing for code quality
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - High-quality React components
 
 ### Backend
-- **Node.js**: Runtime environment for server-side JavaScript
-- **Express.js**: Web framework for building REST APIs
-- **TypeScript**: Static typing for enhanced code quality
-- **PostgreSQL**: Primary database for data persistence
-- **JWT**: Authentication and authorization
-- **bcryptjs**: Password hashing for security
+- **Node.js + Express** - REST API server
+- **TypeScript** - Type-safe backend development
+- **PostgreSQL** - Primary database
+- **JWT + bcryptjs** - Authentication & security
 
-### Additional Tools
-- **pnpm**: Fast, disk space efficient package manager
-- **ESLint & Prettier**: Code formatting and linting for code quality
-- **Prisma**: Database ORM and migration tool
-- **Git**: Version control system
+### Tools
+- **pnpm** - Fast package manager
+- **Prisma** - Database ORM
+- **ESLint & Prettier** - Code quality tools
 
 ## Project Structure
 
@@ -56,99 +59,111 @@ promptOptimizer/
     └── .env.local              # Frontend config
 ```
 
-## Contributors
+## Prerequisites
 
-- **Mari Moslehi** ([@marimoslehi](https://github.com/marimoslehi)) - Lead Developer & Designer
-
-*Contributions welcome! Feel free to submit a Pull Request.*
+- **Node.js** (v18+)
+- **PostgreSQL** (v14+)
+- **pnpm** (`npm install -g pnpm`)
+- **Git**
 
 ## Setup
 
-### Prerequisites
-- **Node.js** (v18 or higher)
-- **PostgreSQL** (v14 or higher)
-- **pnpm** (v8 or higher) - Install with `npm install -g pnpm`
-- **Git** for version control
+### 1. Database Setup
 
-### Backend Setup
-
+**Install PostgreSQL:**
 ```bash
-# Install PostgreSQL (macOS)
+# macOS
 brew install postgresql
 brew services start postgresql
+```
 
-# Create database
+**Create Database:**
+```sql
 psql postgres
+
 CREATE USER promptuser WITH PASSWORD 'promptpass123';
 CREATE DATABASE promptoptimizer OWNER promptuser;
 GRANT ALL PRIVILEGES ON DATABASE promptoptimizer TO promptuser;
 \q
-
-# Navigate to backend and install
-cd backend/my-app
-npm install
-
-# Create .env file with database URL and JWT secret
-echo 'DATABASE_URL="postgresql://promptuser:promptpass123@localhost:5432/promptoptimizer"' > .env
-echo 'JWT_SECRET="'$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")"' >> .env
-echo 'PORT=3001' >> .env
 ```
 
-### Frontend Setup
+### 2. Backend Setup
 
 ```bash
-# Navigate to frontend and install
+cd backend/my-app
+npm install
+```
+
+**Create `.env` file:**
+```bash
+DATABASE_URL="postgresql://promptuser:promptpass123@localhost:5432/promptoptimizer"
+JWT_SECRET="your-generated-secret-here"
+PORT=3001
+```
+
+**Generate JWT Secret:**
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+### 3. Frontend Setup
+
+```bash
 cd frontend
 pnpm install
+```
 
-# Create environment file
-echo 'NEXT_PUBLIC_API_URL=http://localhost:3001/api' > .env.local
+**Create `.env.local` file:**
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
 ## Running the Project
 
-### Development Mode
-
-**Start Backend:**
+### Start Backend
 ```bash
 cd backend/my-app
 npm run dev
 ```
-Backend available at `http://localhost:3001`
+→ Backend: `http://localhost:3001`
 
-**Start Frontend:**
+### Start Frontend
 ```bash
 cd frontend
 pnpm dev
 ```
-Frontend available at `http://localhost:3000`
+→ Frontend: `http://localhost:3000`
 
-### Available Pages
-- **Home**: `http://localhost:3000/`
-- **Dashboard**: `http://localhost:3000/dashboard` - Main AI comparison interface
-- **Landing**: `http://localhost:3000/landing` - Marketing landing page
-- **Onboarding**: `http://localhost:3000/onboarding` - User onboarding flow
-- **Part-time Dashboard**: `http://localhost:3000/part-time` - Work management features
-- **Sign-in**: `http://localhost:3000/sign-in` - Authentication flow
-- **API Key Setup**: `http://localhost:3000/api-key-setup` - Configure AI API keys
-
-### API Health Check
+### Health Check
 ```bash
 curl http://localhost:3001/api/health
 ```
 
+## Available Pages
+
+- **Dashboard**: `/dashboard` - AI model comparison
+- **Landing**: `/landing` - Marketing page
+- **Onboarding**: `/onboarding` - User setup
+- **Auth**: `/sign-in` - Authentication
+- **API Setup**: `/api-key-setup` - Configure AI keys
+- **Part-time**: `/part-time` - Work management
+
+## Contributors
+
+**Mari Moslehi** ([@marimoslehi](https://github.com/marimoslehi)) - Lead Developer
+
+*Contributions welcome! Submit a Pull Request.*
+
 ## License
 
-This project is licensed under the **Business Source License 1.1**.
+**Business Source License 1.1**
 
-- ✅ **Free for non-commercial use** - Perfect for learning, personal projects, and small teams
-- ✅ **Source code available** - Full transparency and community contributions welcome
-- ⚠️ **Commercial use requires license** - Contact for enterprise licensing
-- 🔄 **Becomes open source in 4 years** - Ensuring long-term availability
+✅ **Free** for non-commercial use  
+✅ **Open source** - Full transparency  
+⚠️ **Commercial license** required for business use  
+🔄 **Becomes MIT** in 4 years  
 
-For commercial licensing inquiries, please contact: moslehimari@gmail.com
-
-See the [LICENSE](LICENSE) file for full details.
+Contact: moslehimari@gmail.com
 
 ---
 
