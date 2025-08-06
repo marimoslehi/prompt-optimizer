@@ -8,10 +8,28 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
-import { Play, Download, Settings, TrendingDown, DollarSign, Clock, BarChart3, FileText, Bell } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { 
+  Play, 
+  Download, 
+  Settings, 
+  TrendingDown, 
+  DollarSign, 
+  Clock, 
+  BarChart3, 
+  FileText, 
+  Bell, 
+  User, 
+  Bot,
+  Crown,
+  Zap,
+  AlertCircle,
+  ArrowRight,
+  CreditCard
+} from "lucide-react"
 import { useDashboardOverview, useCostAnalytics, usePrompts } from "@/hooks/useApi"
-import { apiClient } from "@/lib/api"
-import { RunTestRequest } from "@/lib/types/api"
+import { useAIService } from "@/lib/ai-service"
+import { SubscriptionStatus, SubscriptionBadge } from "@/components/SubscriptionStatus"
 
 const models = [
   { id: "gpt-4", name: "GPT-4", provider: "OpenAI", cost: "$0.03/1K tokens", logo: "🤖" },
@@ -19,13 +37,25 @@ const models = [
   { id: "claude-3", name: "Claude 3 Opus", provider: "Anthropic", cost: "$0.015/1K tokens", logo: "🧠" },
   { id: "claude-3-haiku", name: "Claude 3 Haiku", provider: "Anthropic", cost: "$0.00025/1K tokens", logo: "🧠" },
   { id: "gemini-pro", name: "Gemini Pro", provider: "Google", cost: "$0.0005/1K tokens", logo: "💎" },
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", provider: "Google", cost: "FREE", logo: "⚡", isFree: true },
 ]
 
-// Fallback mock responses for development
-const mockResponses = [
+// Enhanced mock responses with conversation-style interactions for fallback
+const mockConversations = [
   {
     model: "GPT-4",
-    response: "Here is a comprehensive analysis of your marketing strategy. The key areas for improvement include: 1) Enhanced customer segmentation, 2) Multi-channel approach, 3) Data-driven decision making...",
+    messages: [
+      {
+        role: "user",
+        content: "Analyze the following marketing strategy and provide actionable recommendations for improvement...",
+        timestamp: "2:30 PM"
+      },
+      {
+        role: "assistant",
+        content: "I'd be happy to analyze your marketing strategy! Here's my comprehensive assessment:\n\n**Key Strengths Identified:**\n- Strong brand positioning in your target market\n- Good customer retention metrics\n\n**Priority Improvements:**\n\n1. **Enhanced Customer Segmentation**\n   - Implement behavioral segmentation\n   - Create personalized messaging for each segment\n\n2. **Multi-Channel Approach**\n   - Expand beyond current channels\n   - Integrate social media with email campaigns\n\n3. **Data-Driven Decision Making**\n   - Set up proper analytics tracking\n   - A/B test all major campaigns\n\n**Expected Impact:** These changes could increase conversion rates by 25-40% within 3 months.\n\nWould you like me to elaborate on any specific area?",
+        timestamp: "2:31 PM"
+      }
+    ],
     tokens: 1247,
     cost: 0.037,
     latency: 2.3,
@@ -33,16 +63,46 @@ const mockResponses = [
   },
   {
     model: "Claude 3 Haiku",
-    response: "Your marketing strategy shows promise but needs refinement. Focus on: customer segmentation improvements, expanding channel diversity, and implementing analytics-driven decisions...",
+    messages: [
+      {
+        role: "user",
+        content: "Analyze the following marketing strategy and provide actionable recommendations for improvement...",
+        timestamp: "2:30 PM"
+      },
+      {
+        role: "assistant",
+        content: "Your marketing strategy shows solid fundamentals but has room for optimization. Let me break this down:\n\n**Current State Assessment:**\nYour strategy demonstrates good market understanding, though execution could be more targeted.\n\n**Actionable Recommendations:**\n\n• **Customer Segmentation Improvements**\n  Focus on creating distinct buyer personas with specific pain points\n\n• **Channel Diversity Expansion**\n  Consider adding video content and influencer partnerships\n\n• **Analytics-Driven Decisions**\n  Implement tracking for customer journey mapping\n\n**Quick Wins:**\n- Optimize email subject lines (potential 15% open rate increase)\n- Retarget website visitors with specific offers\n- Create urgency in CTAs\n\n**Timeline:** Start with email optimization this week, then roll out segmentation over next month.\n\nNeed specific tactics for any of these areas?",
+        timestamp: "2:30 PM"
+      }
+    ],
     tokens: 892,
     cost: 0.0002,
     latency: 1.1,
     quality: 87,
   },
+  {
+    model: "Gemini 1.5 Flash",
+    messages: [
+      {
+        role: "user",
+        content: "Analyze the following marketing strategy and provide actionable recommendations for improvement...",
+        timestamp: "2:30 PM"
+      },
+      {
+        role: "assistant",
+        content: "Quick marketing strategy analysis:\n\n**What's Working:**\n✓ Brand awareness seems solid\n✓ Customer base exists\n\n**What Needs Work:**\n\n🎯 **Targeting Issues**\nYour messaging is too broad. Narrow down to 2-3 specific customer types.\n\n📊 **Measurement Gaps**\nYou're flying blind without proper tracking. Start with Google Analytics goals.\n\n🔄 **Channel Mix**\nToo dependent on one channel. Diversify now.\n\n**3 Quick Fixes:**\n1. Create simple buyer personas this week\n2. Set up conversion tracking today\n3. Test one new channel next month\n\n**Budget Impact:** These fixes cost almost nothing but could boost results 20-30%.\n\n**Timeline:** All changes doable within 2 weeks.\n\nNeed help with any specific implementation?",
+        timestamp: "2:30 PM"
+      }
+    ],
+    tokens: 567,
+    cost: 0,
+    latency: 0.8,
+    quality: 83,
+  }
 ]
 
 export default function DashboardPage() {
-  const [selectedModels, setSelectedModels] = useState(["gpt-4", "claude-3-haiku"])
+  const [selectedModels, setSelectedModels] = useState(["gpt-4", "claude-3-haiku", "gemini-1.5-flash"])
   const [prompt, setPrompt] = useState(
     "Analyze the following marketing strategy and provide actionable recommendations for improvement...",
   )
@@ -54,70 +114,152 @@ export default function DashboardPage() {
   const { data: costAnalytics, loading: costLoading } = useCostAnalytics('30d')
   const { data: promptsData, loading: promptsLoading } = usePrompts()
 
-  const handleModelToggle = (modelId: string) => {
-    setSelectedModels((prev) => (prev.includes(modelId) ? prev.filter((id) => id !== modelId) : [...prev, modelId]))
-  }
+  const handleModelToggle = (modelId: string, checked: boolean | string) => {
+    const isChecked = checked === true || checked === "indeterminate";
+    setSelectedModels((prev) =>
+      isChecked ? [...new Set([...prev, modelId])] : prev.filter((id) => id !== modelId)
+    );
+  };
+
+  const ensureUserMessage = (messages: { role: string; content: string }[]) => {
+    if (!messages || !Array.isArray(messages)) return [];
+
+    const hasUser = messages.some(msg => msg.role === "user");
+
+    if (!hasUser) {
+      return [
+        { role: "user", content: "Hello! Can you answer this question?" },
+        ...messages
+      ];
+    }
+
+    return messages;
+  };
 
   const handleRunTest = async () => {
-    setIsRunning(true)
-    setTestResults(null)
+    setIsRunning(true);
+    setTestResults(null);
 
     try {
-      // Try to use real API if prompts exist
-      if (promptsData?.prompts && promptsData.prompts.length > 0) {
-        const testRequest: RunTestRequest = {
-          promptId: promptsData.prompts[0].id,
-          models: selectedModels,
-          parameters: {}
-        }
+      const { runTest, getSubscription } = useAIService();
+      
+      // Check credits before running test
+      const subscription = await getSubscription();
+      
+      if (subscription.creditsRemaining <= 0) {
+        throw new Error('No credits remaining. Please upgrade to Pro plan to continue.');
+      }
 
-        const result = await apiClient.runTest(testRequest)
-        setTestResults(result.data)
-      } else {
-        // Use mock data for development
+      console.log(`Running test with ${selectedModels.length} models. Credits remaining: ${subscription.creditsRemaining}`);
+      
+      // Use your centralized API service
+      const results = await runTest(selectedModels, prompt);
+      
+      setTestResults(results);
+      
+      // Show success message with cost and credits used
+      console.log(`✅ Test completed! Credits used: ${results.creditsUsed}, Remaining: ${results.remainingCredits}`);
+      
+    } catch (error) {
+      console.error("Test failed:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      // Check if it's a credit/subscription error and provide fallback to mock data
+      if (errorMessage.includes('credits') || errorMessage.includes('sign in') || errorMessage.includes('subscription')) {
+        // Show mock data with upgrade prompts for credit/auth issues
+        const idToNameMap: { [key: string]: string } = {
+          "gpt-4": "GPT-4",
+          "gpt-3.5": "GPT-3.5 Turbo", 
+          "claude-3": "Claude 3 Opus",
+          "claude-3-haiku": "Claude 3 Haiku",
+          "gemini-pro": "Gemini Pro",
+          "gemini-1.5-flash": "Gemini 1.5 Flash"
+        };
+
         const mockResults = {
           id: Date.now().toString(),
-          promptId: 'mock',
+          promptId: "mock-demo",
           models: selectedModels,
           results: selectedModels.map(modelId => {
-            const mockData = mockResponses.find(r => r.model.toLowerCase().includes(modelId.split('-')[0])) || mockResponses[0]
+            const mappedName = idToNameMap[modelId] || "";
+            const mockData = mockConversations.find(r => r.model === mappedName) || mockConversations[0];
+
             return {
-              id: `${modelId}-${Date.now()}`,
+              id: `${modelId}-demo-${Date.now()}`,
               model: modelId,
-              response: mockData.response,
+              conversation: [
+                {
+                  role: 'user',
+                  content: prompt,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                },
+                {
+                  role: 'assistant',
+                  content: `🎉 **Demo Response** (${mappedName})\n\n${mockData.messages[1].content}\n\n---\n💡 **This is a demo response.** ${errorMessage.includes('credits') ? 'Upgrade to Pro for real AI responses!' : 'Sign in to get 3 free credits!'}`,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }
+              ],
               tokens: mockData.tokens,
               cost: mockData.cost,
               responseTime: mockData.latency * 1000,
               quality: mockData.quality
-            }
+            };
           }),
-          totalCost: selectedModels.length * 0.02,
-          createdAt: new Date().toISOString()
+          totalCost: 0,
+          creditsUsed: 0,
+          remainingCredits: 0,
+          createdAt: new Date().toISOString(),
+          isDemoMode: true
+        };
+
+        setTestResults(mockResults);
+      } else {
+        // Show error message for other types of errors
+        let userFriendlyMessage = errorMessage;
+        
+        if (errorMessage.includes('credits')) {
+          userFriendlyMessage = `❌ ${errorMessage}\n\n💡 Upgrade to Pro Plan:\n• Get 1,000 monthly credits\n• Access all AI models\n• Advanced analytics\n• Only $29/month`;
+        } else if (errorMessage.includes('sign in')) {
+          userFriendlyMessage = `❌ ${errorMessage}\n\n🔐 Please sign in to:\n• Get 3 free trial credits\n• Save your test history\n• Access all features`;
+        } else {
+          userFriendlyMessage = `❌ ${errorMessage}\n\n🔧 This could be due to:\n• Temporary service issues\n• Network connectivity problems\n• Server maintenance\n\nPlease try again in a moment.`;
         }
-        setTestResults(mockResults)
+        
+        setTestResults({
+          id: Date.now().toString(),
+          promptId: 'error',
+          models: selectedModels,
+          results: selectedModels.map((modelId, index) => ({
+            id: `error-${index}`,
+            model: modelId,
+            conversation: [
+              {
+                role: 'user',
+                content: prompt,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              },
+              {
+                role: 'assistant',
+                content: userFriendlyMessage,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ],
+            tokens: 0,
+            cost: 0,
+            responseTime: 0,
+            quality: 0
+          })),
+          totalCost: 0,
+          creditsUsed: 0,
+          remainingCredits: 0,
+          createdAt: new Date().toISOString()
+        });
       }
-    } catch (error) {
-      console.error('Test failed:', error)
-      // Show mock results on API error
-      const mockResults = {
-        id: Date.now().toString(),
-        results: mockResponses.filter((_, index) => index < selectedModels.length).map((mock, index) => ({
-          id: `mock-${index}`,
-          model: selectedModels[index] || mock.model,
-          response: mock.response,
-          tokens: mock.tokens,
-          cost: mock.cost,
-          responseTime: mock.latency * 1000,
-          quality: mock.quality
-        }))
-      }
-      setTestResults(mockResults)
     } finally {
-      setTimeout(() => {
-        setIsRunning(false)
-      }, 2000)
+      setTimeout(() => setIsRunning(false), 1500);
     }
-  }
+  };
 
   // Show loading state
   if (overviewLoading || costLoading || promptsLoading) {
@@ -154,19 +296,19 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-sm">PO</span>
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Prompt Optimizer</h1>
-                <p className="text-sm text-gray-500">Enterprise AI Testing Platform</p>
+                <p className="text-sm text-gray-500">AI Cost Intelligence Platform</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Pro Plan</Badge>
+              <SubscriptionBadge />
               {overviewError && (
                 <Badge variant="outline" className="text-orange-600 border-orange-200">
-                  Mock Data
+                  Mock Analytics
                 </Badge>
               )}
             </div>
@@ -196,12 +338,28 @@ export default function DashboardPage() {
         {/* Left Sidebar - Prompt Editor & Model Selection */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
-            {/* API Status */}
+            {/* Subscription Status */}
+            <SubscriptionStatus onUpgrade={() => {
+              // Refresh page after successful upgrade
+              window.location.reload();
+            }} />
+
+            {/* Demo Mode Alert */}
+            {testResults?.isDemoMode && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <strong>Demo Mode:</strong> Showing sample responses. Sign in or upgrade for real AI results!
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Analytics Status */}
             {overviewError && (
               <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm text-orange-800">Using mock data - Backend not connected</span>
+                  <span className="text-sm text-orange-800">Dashboard using mock analytics data</span>
                 </div>
               </div>
             )}
@@ -231,7 +389,7 @@ export default function DashboardPage() {
                     <Checkbox
                       id={model.id}
                       checked={selectedModels.includes(model.id)}
-                      onCheckedChange={() => handleModelToggle(model.id)}
+                      onCheckedChange={(checked) => handleModelToggle(model.id, checked)}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
@@ -242,6 +400,11 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-xs text-gray-500">{model.provider}</p>
                       <p className="text-xs text-gray-600 font-mono">{model.cost}</p>
+                      {model.isFree && (
+                        <Badge className="mt-1 bg-green-100 text-green-800 text-xs">
+                          FREE
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -252,7 +415,7 @@ export default function DashboardPage() {
             <Button
               onClick={handleRunTest}
               disabled={isRunning || selectedModels.length === 0}
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               size="lg"
             >
               {isRunning ? (
@@ -263,107 +426,247 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-2" />
-                  Run Test
+                  Run Test ({selectedModels.length} {selectedModels.length === 1 ? 'model' : 'models'})
                 </>
               )}
             </Button>
+            
+            <p className="text-xs text-gray-500 text-center">
+              Each test uses 1 credit per model selected
+            </p>
           </div>
         </div>
 
-        {/* Center Area - Response Comparison */}
+        {/* Center Area - Conversation Comparison */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Response Comparison</h2>
-            <p className="text-sm text-gray-600">Compare model outputs side by side</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Model Conversation Comparison</h2>
+            <p className="text-sm text-gray-600">Compare how different AI models respond to your prompts</p>
           </div>
 
           {testResults ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {testResults.results.map((result: any, index: number) => (
-                <Card key={index} className="h-fit">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-medium capitalize">
-                        {result.model.replace('-', ' ')}
-                      </CardTitle>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="text-xs">
-                          Quality: {result.quality}%
-                        </Badge>
-                        <Badge
-                          variant={result.cost < 0.01 ? "default" : "destructive"}
-                          className={result.cost < 0.01 ? "bg-emerald-100 text-emerald-800" : ""}
-                        >
-                          ${result.cost.toFixed(4)}
-                        </Badge>
-                      </div>
+            <div>
+              {/* Credits Usage Summary */}
+              {testResults.creditsUsed > 0 && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">
+                        💳 Credits used: {testResults.creditsUsed}
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        Remaining: {testResults.remainingCredits}
+                      </p>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
-                        <p className="text-sm text-gray-700 leading-relaxed">{result.response}</p>
-                      </div>
+                    {testResults.remainingCredits <= 5 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-200"
+                        onClick={() => window.location.href = '/pricing'}
+                      >
+                        <Crown className="w-4 h-4 mr-1" />
+                        Upgrade
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500">Tokens</p>
-                          <p className="font-medium">{result.tokens.toLocaleString()}</p>
+              {/* Demo Mode Banner */}
+              {testResults.isDemoMode && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">🎉 Demo Mode - Sample Responses</p>
+                      <p className="text-sm text-blue-100">Sign in to get real AI responses</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white text-blue-600 border-white hover:bg-blue-50"
+                      onClick={() => window.location.href = '/sign-in'}
+                    >
+                      Sign In
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Results Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {testResults.results.map((result: any, index: number) => (
+                  <Card key={index} className={`h-fit ${testResults.isDemoMode ? 'border-blue-200' : ''}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base font-medium capitalize flex items-center space-x-2">
+                          <span>{result.model.replace('-', ' ')}</span>
+                          <Badge variant="outline" className="text-xs">
+                            Quality: {result.quality}%
+                          </Badge>
+                          {testResults.isDemoMode && (
+                            <Badge className="text-xs bg-blue-100 text-blue-800">
+                              Demo
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <Badge
+                          variant={result.cost === 0 ? "default" : result.cost < 0.01 ? "default" : "destructive"}
+                          className={result.cost === 0 ? "bg-green-100 text-green-800" : result.cost < 0.01 ? "bg-emerald-100 text-emerald-800" : ""}
+                        >
+                          {result.cost === 0 ? "FREE" : `$${result.cost.toFixed(4)}`}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Chat-like conversation display */}
+                        <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto space-y-4">
+                          {(result.conversation || []).map((message: any, msgIndex: number) => (
+                            <div key={msgIndex} className={`flex space-x-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`flex space-x-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  message.role === 'user' 
+                                    ? 'bg-blue-500' 
+                                    : 'bg-gray-300'
+                                }`}>
+                                  {message.role === 'user' ? 
+                                    <User className="w-4 h-4 text-white" /> : 
+                                    <Bot className="w-4 h-4 text-gray-600" />
+                                  }
+                                </div>
+                                <div className={`rounded-lg px-4 py-2 ${
+                                  message.role === 'user'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white border border-gray-200'
+                                }`}>
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                  <p className={`text-xs mt-2 ${
+                                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                                  }`}>
+                                    {message.timestamp}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div>
-                          <p className="text-gray-500">Latency</p>
-                          <p className="font-medium">{(result.responseTime / 1000).toFixed(1)}s</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Cost</p>
-                          <p className="font-medium">${result.cost.toFixed(4)}</p>
+
+                        {/* Metrics */}
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Tokens</p>
+                            <p className="font-medium">{result.tokens.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Latency</p>
+                            <p className="font-medium">{(result.responseTime / 1000).toFixed(1)}s</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Cost</p>
+                            <p className="font-medium">{result.cost === 0 ? "FREE" : `$${result.cost.toFixed(4)}`}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {mockResponses.map((response, index) => (
-                <Card key={index} className="h-fit opacity-50">
+              {mockConversations.slice(0, 2).map((conversation, index) => (
+                <Card key={index} className="h-fit opacity-60 border-dashed border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-medium">{response.model}</CardTitle>
-                      <div className="flex items-center space-x-2">
+                      <CardTitle className="text-base font-medium flex items-center space-x-2">
+                        <span>{conversation.model}</span>
                         <Badge variant="outline" className="text-xs">
-                          Quality: {response.quality}%
+                          Quality: {conversation.quality}%
                         </Badge>
-                        <Badge className="bg-gray-100 text-gray-800">
-                          ${response.cost.toFixed(4)}
-                        </Badge>
-                      </div>
+                      </CardTitle>
+                      <Badge className="bg-gray-100 text-gray-800">
+                        {conversation.cost === 0 ? "FREE" : `$${conversation.cost.toFixed(4)}`}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-700 leading-relaxed">{response.response}</p>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        {conversation.messages.map((message, msgIndex) => (
+                          <div key={msgIndex} className={`flex space-x-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                message.role === 'user' 
+                                  ? 'bg-blue-500' 
+                                  : 'bg-gray-300'
+                              }`}>
+                                {message.role === 'user' ? 
+                                  <User className="w-4 h-4 text-white" /> : 
+                                  <Bot className="w-4 h-4 text-gray-600" />
+                                }
+                              </div>
+                              <div className={`rounded-lg px-4 py-2 ${
+                                message.role === 'user'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-white border border-gray-200'
+                              }`}>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {message.content.length > 200 ? message.content.substring(0, 200) + '...' : message.content}
+                                </p>
+                                <p className={`text-xs mt-2 ${
+                                  message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                                }`}>
+                                  {message.timestamp}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <p className="text-gray-500">Tokens</p>
-                          <p className="font-medium">{response.tokens.toLocaleString()}</p>
+                          <p className="font-medium">{conversation.tokens.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-gray-500">Latency</p>
-                          <p className="font-medium">{response.latency}s</p>
+                          <p className="font-medium">{conversation.latency}s</p>
                         </div>
                         <div>
                           <p className="text-gray-500">Cost</p>
-                          <p className="font-medium">${response.cost.toFixed(4)}</p>
+                          <p className="font-medium">{conversation.cost === 0 ? "FREE" : `${conversation.cost.toFixed(4)}`}</p>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Call to Action Overlay */}
+              <div className="lg:col-span-2 text-center py-8">
+                <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-8">
+                  <Zap className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Ready to compare AI models?
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Enter your prompt above and click "Run Test" to see real responses from multiple AI models
+                  </p>
+                  <Button
+                    onClick={() => {
+                      if (selectedModels.length === 0) {
+                        setSelectedModels(["gpt-4", "gemini-1.5-flash"])
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Run Your First Test
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -371,19 +674,62 @@ export default function DashboardPage() {
         {/* Right Panel - Metrics & Analytics */}
         <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
+            {/* Test Summary */}
+            {testResults && (
+              <Card className={testResults.isDemoMode ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={`text-base flex items-center ${testResults.isDemoMode ? 'text-blue-800' : 'text-emerald-800'}`}>
+                    {testResults.isDemoMode ? <AlertCircle className="w-4 h-4 mr-2" /> : <TrendingDown className="w-4 h-4 mr-2" />}
+                    {testResults.isDemoMode ? 'Demo Results' : 'Test Results'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Models tested</span>
+                      <span className="font-semibold">{testResults.results.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Credits used</span>
+                      <span className="font-semibold">
+                        {testResults.isDemoMode ? '0 (Demo)' : testResults.creditsUsed || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total cost</span>
+                      <span className="font-semibold">
+                        {testResults.isDemoMode ? 'Free' : `${(testResults.totalCost || 0).toFixed(4)}`}
+                      </span>
+                    </div>
+                  </div>
+                  {testResults.isDemoMode && (
+                    <div className="mt-4 pt-3 border-t border-blue-200">
+                      <Button
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        onClick={() => window.location.href = '/sign-in'}
+                      >
+                        Sign In for Real Results
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Cost Savings Summary */}
             <Card className="bg-emerald-50 border-emerald-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-emerald-800 flex items-center">
                   <TrendingDown className="w-4 h-4 mr-2" />
-                  Cost Saved
+                  Estimated Savings
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-700 mb-1">
                   ${costData.savings?.amount || 1247}
                 </div>
-                <p className="text-sm text-emerald-600">This month</p>
+                <p className="text-sm text-emerald-600">This month (estimated)</p>
                 <div className="mt-3">
                   <Badge className="bg-emerald-100 text-emerald-800">
                     ↓ {costData.savings?.percentage || 67}% reduction
@@ -410,83 +756,85 @@ export default function DashboardPage() {
                   <span className="font-semibold">$0.0089</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Queries</span>
-                  <span className="font-semibold">24,891</span>
+                  <span className="text-sm text-gray-600">Total Comparisons</span>
+                  <span className="font-semibold">1,247</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Token Usage */}
+            {/* Model Performance */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Model Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Avg. Response Time</span>
+                  <span className="font-semibold">1.4s</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Success Rate</span>
+                  <span className="font-semibold text-emerald-600">99.8%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Avg. Quality Score</span>
+                  <span className="font-semibold">89/100</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Usage Stats */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center">
                   <FileText className="w-4 h-4 mr-2" />
-                  Token Usage
+                  Usage Statistics
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span>Input Tokens</span>
-                    <span>1.2M / 2M</span>
+                    <span>Monthly Usage</span>
+                    <span>247 / 1000</span>
                   </div>
-                  <Progress value={60} className="h-2" />
+                  <Progress value={24.7} className="h-2" />
                 </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Output Tokens</span>
-                    <span>890K / 2M</span>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Most used model</span>
+                    <span className="font-medium">GPT-4</span>
                   </div>
-                  <Progress value={44} className="h-2" />
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Best value model</span>
+                    <span className="font-medium">Claude Haiku</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Performance Metrics */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Avg. Latency</span>
-                  <span className="font-semibold">1.7s</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Success Rate</span>
-                  <span className="font-semibold text-emerald-600">99.2%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Quality Score</span>
-                  <span className="font-semibold">91/100</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cost Breakdown */}
+            {/* Model Recommendations */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center">
                   <DollarSign className="w-4 h-4 mr-2" />
-                  Cost Breakdown
+                  Smart Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {Object.entries(costData.costByModel || {}).map(([model, cost]) => (
-                  <div key={model} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{model}</span>
-                    <span className={`font-semibold ${cost > 50 ? 'text-red-600' : cost > 20 ? 'text-yellow-600' : 'text-emerald-600'}`}>
-                      ${cost.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-                <Separator />
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total</span>
-                  <span>${costData.totalCost?.toFixed(2) || '103.86'}</span>
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-blue-900">💡 Cost Optimization Tip</p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Try Claude Haiku for simple tasks - 99% similar quality to GPT-4 but 100x cheaper
+                  </p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm font-medium text-green-900">⚡ Speed Tip</p>
+                  <p className="text-xs text-green-700 mt-1">
+                    Gemini 1.5 Flash is FREE and 2x faster than GPT-4 for most queries
+                  </p>
                 </div>
               </CardContent>
             </Card>

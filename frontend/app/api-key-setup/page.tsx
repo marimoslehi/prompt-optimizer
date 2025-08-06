@@ -1,26 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Eye, EyeOff, Check, ExternalLink, Shield, Lock } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff, Check, ExternalLink, Shield, Lock, AlertCircle, Info } from "lucide-react"
+import { useAIProviders } from "@/lib/ai-providers"
 
 interface ApiKeyState {
   value: string
   isVisible: boolean
-  isConnected: boolean
+  isConnected: boolean | null // null = not tested, true = connected, false = failed
   isTesting: boolean
+  error?: string
 }
 
 export default function ApiKeySetup() {
+  const router = useRouter()
+  const { testApiKey } = useAIProviders()
+  
   const [apiKeys, setApiKeys] = useState<Record<string, ApiKeyState>>({
-    openai: { value: "", isVisible: false, isConnected: false, isTesting: false },
-    anthropic: { value: "", isVisible: false, isConnected: false, isTesting: false },
-    google: { value: "", isVisible: false, isConnected: false, isTesting: false },
+    openai: { value: "", isVisible: false, isConnected: null, isTesting: false },
+    anthropic: { value: "", isVisible: false, isConnected: null, isTesting: false },
+    google: { value: "", isVisible: false, isConnected: null, isTesting: false },
   })
 
   const providers = [
@@ -30,25 +37,59 @@ export default function ApiKeySetup() {
       description: "GPT-4, GPT-3.5, and other OpenAI models",
       helpText: "Find your API key at platform.openai.com",
       helpUrl: "https://platform.openai.com/api-keys",
-      placeholder: "sk-...",
+      placeholder: "sk-proj-...",
+      models: ["GPT-4", "GPT-3.5 Turbo"],
+      cost: "$0.03/1K tokens (GPT-4), $0.002/1K tokens (GPT-3.5)"
     },
     {
       id: "anthropic",
       name: "Anthropic",
       description: "Claude 3.5 Sonnet, Claude 3 Opus, and other Claude models",
       helpText: "Get your key from console.anthropic.com",
-      helpUrl: "https://console.anthropic.com/",
+      helpUrl: "https://console.anthropic.com/settings/keys",
       placeholder: "sk-ant-...",
+      models: ["Claude 3 Opus", "Claude 3 Haiku"],
+      cost: "$0.015/1K tokens (Opus), $0.00025/1K tokens (Haiku)"
     },
     {
       id: "google",
       name: "Google AI",
-      description: "Gemini Pro, Gemini Ultra, and other Google models",
+      description: "Gemini Pro, Gemini 1.5 Flash, and other Google models",
       helpText: "Create an API key at aistudio.google.com",
       helpUrl: "https://aistudio.google.com/app/apikey",
       placeholder: "AIza...",
+      models: ["Gemini Pro", "Gemini 1.5 Flash (FREE)"],
+      cost: "$0.0005/1K tokens (Pro), FREE (Flash)"
     },
   ]
+
+  // Load API keys from localStorage on mount
+  useEffect(() => {
+    const savedKeys = localStorage.getItem('ai-api-keys')
+    if (savedKeys) {
+      try {
+        const parsed = JSON.parse(savedKeys)
+        setApiKeys(prev => ({
+          ...prev,
+          openai: { ...prev.openai, value: parsed.openai || "" },
+          anthropic: { ...prev.anthropic, value: parsed.anthropic || "" },
+          google: { ...prev.google, value: parsed.google || "" },
+        }))
+      } catch (error) {
+        console.error('Error loading API keys:', error)
+      }
+    }
+  }, [])
+
+  // Save API keys to localStorage
+  const saveApiKeys = () => {
+    const keysToSave = {
+      openai: apiKeys.openai.value,
+      anthropic: apiKeys.anthropic.value,
+      google: apiKeys.google.value
+    }
+    localStorage.setItem('ai-api-keys', JSON.stringify(keysToSave))
+  }
 
   const toggleVisibility = (providerId: string) => {
     setApiKeys((prev) => ({
@@ -66,37 +107,66 @@ export default function ApiKeySetup() {
       [providerId]: {
         ...prev[providerId],
         value,
-        isConnected: false,
+        isConnected: null, // Reset connection status when key changes
+        error: undefined
       },
     }))
   }
 
   const testConnection = async (providerId: string) => {
-    if (!apiKeys[providerId].value.trim()) return
+    const keyState = apiKeys[providerId]
+    if (!keyState.value.trim()) return
 
     setApiKeys((prev) => ({
       ...prev,
       [providerId]: {
         ...prev[providerId],
         isTesting: true,
+        error: undefined
       },
     }))
 
-    // Simulate API test
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const isValid = await testApiKey(providerId as 'openai' | 'anthropic' | 'google', keyState.value)
+      
+      setApiKeys((prev) => ({
+        ...prev,
+        [providerId]: {
+          ...prev[providerId],
+          isTesting: false,
+          isConnected: isValid,
+          error: isValid ? undefined : "Invalid API key or connection failed"
+        },
+      }))
 
-    setApiKeys((prev) => ({
-      ...prev,
-      [providerId]: {
-        ...prev[providerId],
-        isTesting: false,
-        isConnected: true,
-      },
-    }))
+      if (isValid) {
+        saveApiKeys()
+      }
+    } catch (error) {
+      setApiKeys((prev) => ({
+        ...prev,
+        [providerId]: {
+          ...prev[providerId],
+          isTesting: false,
+          isConnected: false,
+          error: error instanceof Error ? error.message : "Connection test failed"
+        },
+      }))
+    }
   }
 
-  const connectedCount = Object.values(apiKeys).filter((key) => key.isConnected).length
+  const connectedCount = Object.values(apiKeys).filter((key) => key.isConnected === true).length
   const hasAnyKey = Object.values(apiKeys).some((key) => key.value.trim())
+  const hasValidKey = Object.values(apiKeys).some((key) => key.isConnected === true)
+
+  const handleContinue = () => {
+    saveApiKeys()
+    router.push('/dashboard')
+  }
+
+  const handleSkip = () => {
+    router.push('/dashboard')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -120,11 +190,21 @@ export default function ApiKeySetup() {
               <Shield className="w-8 h-8 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900">Welcome to Prompt Optimizer</h1>
-            <p className="text-xl text-slate-600">Connect Your API Keys to Get Started</p>
+            <p className="text-xl text-slate-600">Connect Your AI Provider API Keys</p>
             <p className="text-slate-500 max-w-md mx-auto">
-              Add your API keys from AI providers to start optimizing your prompts. You can always add more later.
+              Add your API keys to access real AI models and get accurate cost comparisons. 
+              You can always add more later or use our demo mode.
             </p>
           </div>
+
+          {/* Free Model Alert */}
+          <Alert className="border-green-200 bg-green-50">
+            <Info className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Good news!</strong> Gemini 1.5 Flash is completely FREE to use. 
+              You can start testing immediately with just a Google AI API key.
+            </AlertDescription>
+          </Alert>
 
           {/* Provider Cards */}
           <div className="space-y-4">
@@ -136,22 +216,41 @@ export default function ApiKeySetup() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <div className="w-6 h-6 bg-slate-400 rounded" />
+                          {provider.id === 'openai' && <span className="text-lg">🤖</span>}
+                          {provider.id === 'anthropic' && <span className="text-lg">🧠</span>}
+                          {provider.id === 'google' && <span className="text-lg">💎</span>}
                         </div>
                         <div>
-                          <CardTitle className="text-lg font-semibold text-slate-900">
-                            {provider.name}
-                            {keyState.isConnected && (
+                          <CardTitle className="text-lg font-semibold text-slate-900 flex items-center space-x-2">
+                            <span>{provider.name}</span>
+                            {keyState.isConnected === true && (
                               <Badge
                                 variant="secondary"
-                                className="ml-2 bg-emerald-100 text-emerald-700 border-emerald-200"
+                                className="bg-emerald-100 text-emerald-700 border-emerald-200"
                               >
                                 <Check className="w-3 h-3 mr-1" />
                                 Connected
                               </Badge>
                             )}
+                            {keyState.isConnected === false && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-red-100 text-red-700 border-red-200"
+                              >
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Failed
+                              </Badge>
+                            )}
                           </CardTitle>
                           <CardDescription className="text-slate-500">{provider.description}</CardDescription>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {provider.models.map((model) => (
+                              <Badge key={model} variant="outline" className="text-xs">
+                                {model}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{provider.cost}</p>
                         </div>
                       </div>
                     </div>
@@ -182,6 +281,12 @@ export default function ApiKeySetup() {
                           </Button>
                         </div>
                       </div>
+                      {keyState.error && (
+                        <p className="text-sm text-red-600 flex items-center space-x-1">
+                          <AlertCircle className="w-3 h-3" />
+                          <span>{keyState.error}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -196,17 +301,17 @@ export default function ApiKeySetup() {
                       </a>
                       <Button
                         onClick={() => testConnection(provider.id)}
-                        disabled={!keyState.value.trim() || keyState.isTesting || keyState.isConnected}
-                        variant={keyState.isConnected ? "secondary" : "outline"}
+                        disabled={!keyState.value.trim() || keyState.isTesting}
+                        variant={keyState.isConnected === true ? "secondary" : "outline"}
                         size="sm"
-                        className={keyState.isConnected ? "bg-emerald-100 text-emerald-700 border-emerald-200" : ""}
+                        className={keyState.isConnected === true ? "bg-emerald-100 text-emerald-700 border-emerald-200" : ""}
                       >
                         {keyState.isTesting ? (
                           <>
                             <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin mr-2" />
                             Testing...
                           </>
-                        ) : keyState.isConnected ? (
+                        ) : keyState.isConnected === true ? (
                           <>
                             <Check className="w-4 h-4 mr-2" />
                             Connected
@@ -232,16 +337,16 @@ export default function ApiKeySetup() {
                 </p>
                 <p className="text-xs text-slate-600">
                   All API calls are made directly from your browser to the respective AI providers. We never see or
-                  store your API keys on our servers.
+                  store your API keys on our servers. Keys are saved in your browser's local storage.
                 </p>
                 <div className="flex items-center space-x-4 pt-2">
                   <Badge variant="outline" className="text-xs">
                     <Shield className="w-3 h-3 mr-1" />
-                    End-to-End Encrypted
+                    Client-Side Only
                   </Badge>
                   <Badge variant="outline" className="text-xs">
                     <Lock className="w-3 h-3 mr-1" />
-                    Local Storage Only
+                    Local Storage
                   </Badge>
                 </div>
               </div>
@@ -250,8 +355,8 @@ export default function ApiKeySetup() {
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-6">
-            <Button variant="ghost" className="text-slate-600">
-              Skip for Now
+            <Button variant="ghost" className="text-slate-600" onClick={handleSkip}>
+              Skip - Use Demo Mode
             </Button>
             <div className="flex items-center space-x-3">
               {connectedCount > 0 && (
@@ -259,8 +364,12 @@ export default function ApiKeySetup() {
                   {connectedCount} provider{connectedCount !== 1 ? "s" : ""} connected
                 </span>
               )}
-              <Button className="bg-blue-700 hover:bg-blue-800 text-white px-8" disabled={!hasAnyKey}>
-                Continue
+              <Button 
+                className="bg-blue-700 hover:bg-blue-800 text-white px-8" 
+                onClick={handleContinue}
+                disabled={!hasAnyKey}
+              >
+                {hasValidKey ? "Continue to Dashboard" : "Continue with Demo"}
               </Button>
             </div>
           </div>
