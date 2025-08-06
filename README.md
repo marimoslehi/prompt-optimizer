@@ -1,28 +1,33 @@
-# Prompt Optimizer
+# 🧠 Prompt Optimizer
+**AI Cost Intelligence Platform**  
+Compare responses from multiple AI models, reduce costs, and discover the most efficient model for every task — with or without API keys.
 
-Enterprise AI Testing Platform - Compare AI model responses, optimize costs, and improve performance across multiple AI providers.
+## 📌 Table of Contents
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Technology Stack](#-technology-stack)
+- [Project Structure](#-project-structure)
+- [Setup Instructions](#-setup-instructions)
+- [Running the Project](#-running-the-project)
+- [Available Pages](#-available-pages)
+- [Access Levels](#-access-levels-dashboard-modes)
+- [Contributors](#-contributors)
+- [License](#-license)
+- [Community](#-join-the-community)
 
-## Table of Contents
-- [Introduction](#introduction)
-- [Technology Used](#technology-used)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Setup](#setup)
-- [Running the Project](#running-the-project)
-- [Contributors](#contributors)
-- [License](#license)
+## 🚀 Overview
+**Prompt Optimizer** is a multi-model testing platform that helps developers and businesses:
+- Find the best AI model for each prompt
+- Compare GPT-4, Claude, Gemini, Llama, and others
+- Analyze cost, speed, and quality — in real time
+- Start using AI instantly — no setup or API keys required
 
-## Introduction
-
-Prompt Optimizer helps businesses and developers maximize AI efficiency and cost-effectiveness. 
-
-**Key Features:**
-- Compare AI model responses side-by-side
-- Real-time cost tracking and analytics
-- Performance optimization across providers
-- Support for OpenAI, Anthropic, Google AI, and more
-
-Perfect for teams making data-driven AI decisions.
+## 🔥 Key Features
+- 🥊 **AI Model Battle** — Watch models compete side-by-side  
+- 💸 **Cost Calculator** — See how much you're overpaying  
+- 🧪 **Free Forever Tier** — Test Gemini, Llama, and Mistral for free  
+- 📊 **Prompt Quality Scoring** — Optimize your prompt writing  
+- ⚙️ **Smart Model Suggestions** — Get the best match for your use case  
 
 ## Technology Used
 
@@ -59,14 +64,16 @@ promptOptimizer/
     └── .env.local              # Frontend config
 ```
 
-## Prerequisites
+
+
+## Setup Instructions
+
+### Prerequisites
 
 - **Node.js** (v18+)
 - **PostgreSQL** (v14+)
 - **pnpm** (`npm install -g pnpm`)
 - **Git**
-
-## Setup
 
 ### 1. Database Setup
 
