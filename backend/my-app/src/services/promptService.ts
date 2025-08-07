@@ -177,7 +177,7 @@ export class PromptService {
        const query = 'DELETE FROM prompts WHERE id = $1 AND user_id = $2';
        const result = await this.dbService.query(query, [id, userId]);
 
-       if (result.affectedRows === 0) {
+       if (Array.isArray(result) ? result.length === 0 : (result as any).affectedRows === 0) {
            throw new Error('Prompt not found or not authorized');
        }
 

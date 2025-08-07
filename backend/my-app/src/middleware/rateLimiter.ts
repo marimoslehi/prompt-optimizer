@@ -1,8 +1,38 @@
-import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { Request, Response, NextFunction } from 'express';
 
-const rateLimiter = new RateLimiterMemory({
-    keyGenerator: (req: Request) => req.ip,
+// Simple in-memory rate limiter (replace with rate-limiter-flexible if needed)
+interface RateLimiterOptions {
+    points: number;
+    duration: number;
+}
+
+class SimpleRateLimiter {
+    private requests: Map<string, number[]> = new Map();
+    private options: RateLimiterOptions;
+
+    constructor(options: RateLimiterOptions) {
+        this.options = options;
+    }
+
+    async consume(key: string): Promise<void> {
+        const now = Date.now();
+        const windowStart = now - (this.options.duration * 1000);
+        
+        const requests = this.requests.get(key) || [];
+        const validRequests = requests.filter(time => time > windowStart);
+        
+        if (validRequests.length >= this.options.points) {
+            const oldestRequest = Math.min(...validRequests);
+            const msBeforeNext = (oldestRequest + (this.options.duration * 1000)) - now;
+            throw { msBeforeNext };
+        }
+        
+        validRequests.push(now);
+        this.requests.set(key, validRequests);
+    }
+}
+
+const rateLimiter = new SimpleRateLimiter({
     points: 100, // Number of requests
     duration: 60, // Per 60 seconds
 });
@@ -13,7 +43,8 @@ export const rateLimiterMiddleware = async (
     next: NextFunction
 ) => {
     try {
-        await rateLimiter.consume(req.ip);
+        const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+        await rateLimiter.consume(clientIP);
         next();
     } catch (rejRes: any) {
         const secs = Math.round(rejRes.msBeforeNext / 1000) || 1;
