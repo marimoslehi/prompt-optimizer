@@ -32,13 +32,87 @@ import { useAIService } from "@/lib/ai-service"
 import { SubscriptionStatus, SubscriptionBadge } from "@/components/SubscriptionStatus"
 
 const models = [
-  { id: "gpt-4", name: "GPT-4", provider: "OpenAI", cost: "$0.03/1K tokens", logo: "🤖" },
-  { id: "gpt-3.5", name: "GPT-3.5 Turbo", provider: "OpenAI", cost: "$0.002/1K tokens", logo: "🤖" },
-  { id: "claude-3", name: "Claude 3 Opus", provider: "Anthropic", cost: "$0.015/1K tokens", logo: "🧠" },
-  { id: "claude-3-haiku", name: "Claude 3 Haiku", provider: "Anthropic", cost: "$0.00025/1K tokens", logo: "🧠" },
-  { id: "gemini-pro", name: "Gemini Pro", provider: "Google", cost: "$0.0005/1K tokens", logo: "💎" },
-  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", provider: "Google", cost: "FREE", logo: "⚡", isFree: true },
+  // FREE MODELS (Real AI Responses)
+  { 
+    id: "gemini-1.5-flash", 
+    name: "Gemini 1.5 Flash", 
+    provider: "Google", 
+    cost: "FREE", 
+    logo: "⚡", 
+    isFree: true,
+    description: "Fast, high-quality responses from Google"
+  },
+  { 
+    id: "llama-7b", 
+    name: "Llama 2 7B", 
+    provider: "Meta", 
+    cost: "FREE", 
+    logo: "🦙", 
+    isFree: true,
+    description: "Open-source model via Hugging Face"
+  },
+  { 
+    id: "mistral-7b", 
+    name: "Mistral 7B", 
+    provider: "Mistral", 
+    cost: "FREE", 
+    logo: "🌪️", 
+    isFree: true,
+    description: "Efficient French AI model"
+  },
+  { 
+    id: "groq-llama", 
+    name: "Groq Llama 3", 
+    provider: "Groq", 
+    cost: "FREE", 
+    logo: "🚀", 
+    isFree: true,
+    description: "Ultra-fast inference (sub-second)"
+  },
+  
+  // PREMIUM MODELS (Demo Responses - until you add API keys)
+  { 
+    id: "gpt-4", 
+    name: "GPT-4", 
+    provider: "OpenAI", 
+    cost: "$0.03/1K tokens", 
+    logo: "🤖",
+    description: "Premium model (demo responses)"
+  },
+  { 
+    id: "gpt-3.5", 
+    name: "GPT-3.5 Turbo", 
+    provider: "OpenAI", 
+    cost: "$0.002/1K tokens", 
+    logo: "🤖",
+    description: "Fast premium model (demo responses)"
+  },
+  { 
+    id: "claude-3", 
+    name: "Claude 3 Opus", 
+    provider: "Anthropic", 
+    cost: "$0.015/1K tokens", 
+    logo: "🧠",
+    description: "Premium model (demo responses)"
+  },
+  { 
+    id: "claude-3-haiku", 
+    name: "Claude 3 Haiku", 
+    provider: "Anthropic", 
+    cost: "$0.00025/1K tokens", 
+    logo: "🧠",
+    description: "Fast premium model (demo responses)"
+  },
+  { 
+    id: "gemini-pro", 
+    name: "Gemini Pro", 
+    provider: "Google", 
+    cost: "$0.0005/1K tokens", 
+    logo: "💎",
+    description: "Premium model (demo responses)"
+  },
 ]
+
 
 // Enhanced mock responses with conversation-style interactions for fallback
 const mockConversations = [
@@ -137,129 +211,63 @@ export default function DashboardPage() {
   };
 
   const handleRunTest = async () => {
-    setIsRunning(true);
-    setTestResults(null);
+  setIsRunning(true);
+  setTestResults(null);
 
-    try {
-      const { runTest, getSubscription } = useAIService();
-      
-      // Check credits before running test
-      const subscription = await getSubscription();
-      
-      if (subscription.creditsRemaining <= 0) {
-        throw new Error('No credits remaining. Please upgrade to Pro plan to continue.');
-      }
-
-      console.log(`Running test with ${selectedModels.length} models. Credits remaining: ${subscription.creditsRemaining}`);
-      
-      // Use your centralized API service
-      const results = await runTest(selectedModels, prompt);
-      
-      setTestResults(results);
-      
-      // Show success message with cost and credits used
-      console.log(`✅ Test completed! Credits used: ${results.creditsUsed}, Remaining: ${results.remainingCredits}`);
-      
-    } catch (error) {
-      console.error("Test failed:", error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
-      // Check if it's a credit/subscription error and provide fallback to mock data
-      if (errorMessage.includes('credits') || errorMessage.includes('sign in') || errorMessage.includes('subscription')) {
-        // Show mock data with upgrade prompts for credit/auth issues
-        const idToNameMap: { [key: string]: string } = {
-          "gpt-4": "GPT-4",
-          "gpt-3.5": "GPT-3.5 Turbo", 
-          "claude-3": "Claude 3 Opus",
-          "claude-3-haiku": "Claude 3 Haiku",
-          "gemini-pro": "Gemini Pro",
-          "gemini-1.5-flash": "Gemini 1.5 Flash"
-        };
-
-        const mockResults = {
-          id: Date.now().toString(),
-          promptId: "mock-demo",
-          models: selectedModels,
-          results: selectedModels.map(modelId => {
-            const mappedName = idToNameMap[modelId] || "";
-            const mockData = mockConversations.find(r => r.model === mappedName) || mockConversations[0];
-
-            return {
-              id: `${modelId}-demo-${Date.now()}`,
-              model: modelId,
-              conversation: [
-                {
-                  role: 'user',
-                  content: prompt,
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                },
-                {
-                  role: 'assistant',
-                  content: `🎉 **Demo Response** (${mappedName})\n\n${mockData.messages[1].content}\n\n---\n💡 **This is a demo response.** ${errorMessage.includes('credits') ? 'Upgrade to Pro for real AI responses!' : 'Sign in to get 3 free credits!'}`,
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }
-              ],
-              tokens: mockData.tokens,
-              cost: mockData.cost,
-              responseTime: mockData.latency * 1000,
-              quality: mockData.quality
-            };
-          }),
-          totalCost: 0,
-          creditsUsed: 0,
-          remainingCredits: 0,
-          createdAt: new Date().toISOString(),
-          isDemoMode: true
-        };
-
-        setTestResults(mockResults);
-      } else {
-        // Show error message for other types of errors
-        let userFriendlyMessage = errorMessage;
-        
-        if (errorMessage.includes('credits')) {
-          userFriendlyMessage = `❌ ${errorMessage}\n\n💡 Upgrade to Pro Plan:\n• Get 1,000 monthly credits\n• Access all AI models\n• Advanced analytics\n• Only $29/month`;
-        } else if (errorMessage.includes('sign in')) {
-          userFriendlyMessage = `❌ ${errorMessage}\n\n🔐 Please sign in to:\n• Get 3 free trial credits\n• Save your test history\n• Access all features`;
-        } else {
-          userFriendlyMessage = `❌ ${errorMessage}\n\n🔧 This could be due to:\n• Temporary service issues\n• Network connectivity problems\n• Server maintenance\n\nPlease try again in a moment.`;
-        }
-        
-        setTestResults({
-          id: Date.now().toString(),
-          promptId: 'error',
-          models: selectedModels,
-          results: selectedModels.map((modelId, index) => ({
-            id: `error-${index}`,
-            model: modelId,
-            conversation: [
-              {
-                role: 'user',
-                content: prompt,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              },
-              {
-                role: 'assistant',
-                content: userFriendlyMessage,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }
-            ],
-            tokens: 0,
-            cost: 0,
-            responseTime: 0,
-            quality: 0
-          })),
-          totalCost: 0,
-          creditsUsed: 0,
-          remainingCredits: 0,
-          createdAt: new Date().toISOString()
-        });
-      }
-    } finally {
-      setTimeout(() => setIsRunning(false), 1500);
-    }
-  };
+  try {
+    const { runTest } = useAIService();
+    
+    console.log(`🚀 Running test with ${selectedModels.length} models (bypassing subscription check for testing)`);
+    
+    // BYPASS subscription check and directly call your backend
+    const results = await runTest(selectedModels, prompt);
+    
+    console.log('✅ Got results from backend:', results);
+    setTestResults(results);
+    
+  } catch (error) {
+    console.error("❌ API call failed:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Only show demo mode if it's specifically a backend connection issue
+    console.log('Error message:', errorMessage);
+    
+    // For now, let's see the actual error instead of falling back to demo
+    setTestResults({
+      id: Date.now().toString(),
+      promptId: 'error',
+      models: selectedModels,
+      results: selectedModels.map((modelId, index) => ({
+        id: `error-${index}`,
+        model: modelId,
+        conversation: [
+          {
+            role: 'user',
+            content: prompt,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          },
+          {
+            role: 'assistant',
+            content: `🔧 **Backend Test Error**\n\n${errorMessage}\n\n**Debug Info:**\n- Backend URL: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}\n- Models: ${selectedModels.join(', ')}\n- This should help us see what's wrong!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ],
+        tokens: 0,
+        cost: 0,
+        responseTime: 0,
+        quality: 0
+      })),
+      totalCost: 0,
+      creditsUsed: 0,
+      remainingCredits: 0,
+      createdAt: new Date().toISOString(),
+      isDemoMode: false // Don't show as demo mode
+    });
+  } finally {
+    setTimeout(() => setIsRunning(false), 1500);
+  }
+};
 
   // Show loading state
   if (overviewLoading || costLoading || promptsLoading) {
@@ -496,7 +504,7 @@ export default function DashboardPage() {
 
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {testResults.results.map((result: any, index: number) => (
+                {(testResults.results || []).map((result: any, index: number) => (
                   <Card key={index} className={`h-fit ${testResults.isDemoMode ? 'border-blue-200' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">

@@ -158,34 +158,44 @@ export class AIService {
   }
 
   // Upgrade to Pro subscription
-  async upgradeToProPlan() {
+    async upgradeToProPlan() {
     try {
-      const response = await fetch(`${this.baseUrl}/subscription/upgrade`, {
+        const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+
+        if (!priceId) {
+        throw new Error('Stripe price ID is missing in environment variables.');
+        }
+
+        const response = await fetch(`${this.baseUrl}/subscription/upgrade`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
-          plan: 'pro',
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
+            plan: 'pro',
+            priceId: priceId,
         }),
-      });
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to upgrade subscription');
-      }
+        const data = await response.json().catch(() => null);
 
-      const data = await response.json();
-      
-      // Redirect to Stripe checkout if needed
-      if (data.checkoutUrl) {
+        if (!response.ok) {
+        const message = data?.message || `Subscription upgrade failed with status ${response.status}`;
+        throw new Error(message);
+        }
+
+        // Redirect to Stripe checkout
+        if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
-      }
-      
-      return data;
+        } else {
+        throw new Error('Missing checkout URL in response.');
+        }
+
+        return data;
     } catch (error) {
-      console.error('Error upgrading subscription:', error);
-      throw error;
+        console.error('Error upgrading subscription:', error);
+        throw error;
     }
-  }
+    }
+
 
   // Cancel subscription
   async cancelSubscription() {
