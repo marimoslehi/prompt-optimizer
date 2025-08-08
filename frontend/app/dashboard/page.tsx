@@ -25,7 +25,8 @@ import {
   Zap,
   AlertCircle,
   ArrowRight,
-  CreditCard
+  CreditCard,
+  Send
 } from "lucide-react"
 import { useDashboardOverview, useCostAnalytics, usePrompts } from "@/hooks/useApi"
 import { useAIService } from "@/lib/ai-service"
@@ -42,24 +43,25 @@ const models = [
     isFree: true,
     description: "Fast, high-quality responses from Google"
   },
-  { 
-    id: "llama-7b", 
-    name: "Llama 2 7B", 
-    provider: "Meta", 
-    cost: "FREE", 
-    logo: "🦙", 
-    isFree: true,
-    description: "Open-source model via Hugging Face"
-  },
-  { 
-    id: "mistral-7b", 
-    name: "Mistral 7B", 
-    provider: "Mistral", 
-    cost: "FREE", 
-    logo: "🌪️", 
-    isFree: true,
-    description: "Efficient French AI model"
-  },
+  // TEMPORARILY DISABLED - No access currently
+  // { 
+  //   id: "llama-7b", 
+  //   name: "Llama 2 7B", 
+  //   provider: "Meta", 
+  //   cost: "FREE", 
+  //   logo: "🦙", 
+  //   isFree: true,
+  //   description: "Open-source model via Hugging Face"
+  // },
+  // { 
+  //   id: "mistral-7b", 
+  //   name: "Mistral 7B", 
+  //   provider: "Mistral", 
+  //   cost: "FREE", 
+  //   logo: "🌪️", 
+  //   isFree: true,
+  //   description: "Efficient French AI model"
+  // },
   { 
     id: "groq-llama", 
     name: "Groq Llama 3", 
@@ -112,7 +114,6 @@ const models = [
     description: "Premium model (demo responses)"
   },
 ]
-
 
 // Enhanced mock responses with conversation-style interactions for fallback
 const mockConversations = [
@@ -182,6 +183,10 @@ export default function DashboardPage() {
   )
   const [isRunning, setIsRunning] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
+  
+  // Follow-up conversation state
+  const [followUpMessages, setFollowUpMessages] = useState<{[key: string]: string}>({})
+  const [sendingFollowUp, setSendingFollowUp] = useState<{[key: string]: boolean}>({})
 
   // API Data Hooks
   const { data: overview, loading: overviewLoading, error: overviewError } = useDashboardOverview()
@@ -210,78 +215,246 @@ export default function DashboardPage() {
     return messages;
   };
 
-  const handleRunTest = async () => {
-  setIsRunning(true);
-  setTestResults(null);
-
-  try {
-    const { runTest } = useAIService();
+  // FIXED: Follow-up message handler with better context processing
+  const handleFollowUp = async (resultId: string, modelId: string, message: string) => {
+    if (!message.trim()) return;
     
-    console.log('🚀 Running test with 4 models (bypassing subscription check for testing)');
+    setSendingFollowUp(prev => ({ ...prev, [resultId]: true }));
     
-    const results = await runTest(selectedModels, prompt);
-    
-    console.log('✅ Got results from backend:', results);
-    console.log('Type of results:', typeof results);
-    console.log('Results keys:', Object.keys(results));
-    console.log('Full results structure:', JSON.stringify(results, null, 2));
-    
-    // Try different ways to access the data
-    if (results.data) {
-      console.log('✅ Using results.data');
-      setTestResults(results.data);
-    } else if (results.results) {
-      console.log('✅ Using results.results directly');
-      setTestResults(results);
-    } else {
-      console.log('❌ Unknown structure, logging everything:');
-      console.log(results);
-      setTestResults(results);
-    }
-    
-  } catch (error) {
-    console.error("❌ API call failed:", error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.log('Error message:', errorMessage);
-    
-    // Create proper error results structure
-    const errorResults = {
-      id: Date.now().toString(),
-      promptId: 'error',
-      models: selectedModels,
-      results: selectedModels.map((modelId, index) => ({
-        id: `error-${index}`,
-        model: modelId,
-        conversation: [
-          {
-            role: 'user',
-            content: prompt,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          },
-          {
-            role: 'assistant',
-            content: `🔧 **Backend Test Error**\n\n${errorMessage}\n\n**Debug Info:**\n- Backend URL: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}\n- Models: ${selectedModels.join(', ')}\n- Check browser Network tab and backend logs!`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    try {
+      const { runTest } = useAIService();
+      
+      // Get the conversation history for this model
+      const currentResult = testResults.results.find((r: any) => r.id === resultId);
+      if (!currentResult) return;
+      
+      // Check if this is a completely new request (like asking for a cooking resume)
+      const isNewRequest = message.toLowerCase().includes('cooking') || 
+                           message.toLowerCase().includes('culinary') ||
+                           message.toLowerCase().includes('different') ||
+                           message.toLowerCase().includes('another') ||
+                           message.toLowerCase().includes('new');
+      
+      let contextualPrompt = '';
+      
+      if (isNewRequest) {
+        // For completely new requests, provide minimal context
+        // Removed llama and mistral specific handling since they're not available
+        contextualPrompt = `New request (different from previous): ${message}`;
+      } else {
+        // For related follow-ups, build context based on model type
+        // Removed llama and mistral specific handling since they're not available
+        // For all models, use full context
+        const conversationHistory = currentResult.conversation.map((msg: any) => 
+          `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+        ).join('\n\n');
+        contextualPrompt = `Previous conversation:\n\n${conversationHistory}\n\nUser follow-up: ${message}`;
+      }
+      
+      console.log(`🔄 Sending follow-up to ${modelId}:`, {
+        modelId,
+        isNewRequest,
+        promptLength: contextualPrompt.length,
+        message: message.slice(0, 50) + '...'
+      });
+      
+      // Call just this one model with optimized context
+      const results = await runTest([modelId], contextualPrompt);
+      
+      // Handle different possible response structures
+      let apiResponse = null;
+      if (results?.data?.results && Array.isArray(results.data.results) && results.data.results[0]) {
+        apiResponse = results.data.results[0];
+      } else if (results?.results && Array.isArray(results.results) && results.results[0]) {
+        apiResponse = results.results[0];
+      } else if (results && results.conversation) {
+        // Direct response structure
+        apiResponse = results;
+      }
+      
+      if (apiResponse) {
+        // Extract the actual response content
+        let responseContent = '';
+        if (apiResponse.conversation && Array.isArray(apiResponse.conversation) && apiResponse.conversation.length > 0) {
+          // Find the assistant's response in the returned conversation
+          const assistantMessage = apiResponse.conversation.find((msg: any) => msg.role === 'assistant');
+          responseContent = assistantMessage?.content || apiResponse.conversation[apiResponse.conversation.length - 1]?.content || 'No response received';
+        } else if (apiResponse.response) {
+          // Direct response content
+          responseContent = apiResponse.response;
+        } else {
+          responseContent = 'Error: No response content found';
+        }
+        
+        // Update the conversation in testResults - with proper null checking
+        setTestResults((prevResults: any) => {
+          if (!prevResults || !prevResults.results || !Array.isArray(prevResults.results)) {
+            return prevResults;
           }
-        ],
-        tokens: 0,
-        cost: 0,
-        responseTime: 0,
-        quality: 0
-      })),
-      totalCost: 0,
-      creditsUsed: 0,
-      remainingCredits: 0,
-      createdAt: new Date().toISOString(),
-      isDemoMode: false
-    };
-    
-    setTestResults(errorResults);
-  } finally {
-    setTimeout(() => setIsRunning(false), 1500);
-  }
-};
+          
+          return {
+            ...prevResults,
+            results: prevResults.results.map((result: any) => {
+              if (result.id === resultId) {
+                return {
+                  ...result,
+                  conversation: [
+                    ...(result.conversation || []),
+                    {
+                      role: 'user',
+                      content: message,
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    },
+                    {
+                      role: 'assistant',
+                      content: responseContent,
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                  ],
+                  tokens: (result.tokens || 0) + (apiResponse.tokens || 0),
+                  cost: (result.cost || 0) + (apiResponse.cost || 0)
+                };
+              }
+              return result;
+            })
+          };
+        });
+        
+        // Clear the input after successful response
+        setFollowUpMessages(prev => ({ ...prev, [resultId]: '' }));
+        
+      } else {
+        throw new Error('Invalid response structure from API - no valid data found');
+      }
+      
+    } catch (error) {
+      console.error(`❌ Follow-up error for ${modelId}:`, error);
+      
+      // Provide general error handling (removed model-specific handling for llama/mistral)
+      let errorMessage = `⚠️ Sorry, I encountered an error processing your follow-up question. Please try again.`;
+      
+      // Add error message to conversation - with proper null checking
+      setTestResults((prevResults: any) => {
+        if (!prevResults || !prevResults.results || !Array.isArray(prevResults.results)) {
+          return prevResults;
+        }
+        
+        return {
+          ...prevResults,
+          results: prevResults.results.map((result: any) => {
+            if (result.id === resultId) {
+              return {
+                ...result,
+                conversation: [
+                  ...(result.conversation || []),
+                  {
+                    role: 'user',
+                    content: message,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  },
+                  {
+                    role: 'assistant',
+                    content: errorMessage,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  }
+                ]
+              };
+            }
+            return result;
+          })
+        };
+      });
+      
+      setFollowUpMessages(prev => ({ ...prev, [resultId]: '' }));
+    } finally {
+      setSendingFollowUp(prev => ({ ...prev, [resultId]: false }));
+    }
+  };
+
+  const handleRunTest = async () => {
+    setIsRunning(true);
+    setTestResults(null);
+
+    try {
+      const { runTest } = useAIService();
+      
+      console.log('🚀 Running test with models:', selectedModels);
+      
+      const results = await runTest(selectedModels, prompt);
+      
+      console.log('✅ Got results from backend:', results);
+      
+      // Handle different possible response structures safely
+      let processedResults = null;
+      
+      if (results && typeof results === 'object') {
+        if (results.data && typeof results.data === 'object') {
+          console.log('✅ Using results.data structure');
+          processedResults = results.data;
+        } else if (results.results && Array.isArray(results.results)) {
+          console.log('✅ Using results.results directly');
+          processedResults = results;
+        } else if (results.id || results.models) {
+          // Direct results object
+          console.log('✅ Using direct results object');
+          processedResults = results;
+        } else {
+          console.log('⚠️ Unknown structure, using as-is');
+          processedResults = results;
+        }
+      } else {
+        throw new Error('Invalid response: expected object but got ' + typeof results);
+      }
+      
+      if (processedResults) {
+        setTestResults(processedResults);
+      } else {
+        throw new Error('No valid results found in API response');
+      }
+      
+    } catch (error) {
+      console.error("❌ API call failed:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.log('Error message:', errorMessage);
+      
+      // Create proper error results structure
+      const errorResults = {
+        id: Date.now().toString(),
+        promptId: 'error',
+        models: selectedModels,
+        results: selectedModels.map((modelId, index) => ({
+          id: `error-${index}`,
+          model: modelId,
+          conversation: [
+            {
+              role: 'user',
+              content: prompt,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            },
+            {
+              role: 'assistant',
+              content: `🔧 **Backend Test Error**\n\n${errorMessage}\n\n**Debug Info:**\n- Backend URL: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}\n- Models: ${selectedModels.join(', ')}\n- Check browser Network tab and backend logs!`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ],
+          tokens: 0,
+          cost: 0,
+          responseTime: 0,
+          quality: 0
+        })),
+        totalCost: 0,
+        creditsUsed: 0,
+        remainingCredits: 0,
+        createdAt: new Date().toISOString(),
+        isDemoMode: false
+      };
+      
+      setTestResults(errorResults);
+    } finally {
+      setTimeout(() => setIsRunning(false), 1500);
+    }
+  };
 
   // Show loading state
   if (overviewLoading || costLoading || promptsLoading) {
@@ -537,7 +710,7 @@ export default function DashboardPage() {
                           variant={result.cost === 0 ? "default" : result.cost < 0.01 ? "default" : "destructive"}
                           className={result.cost === 0 ? "bg-green-100 text-green-800" : result.cost < 0.01 ? "bg-emerald-100 text-emerald-800" : ""}
                         >
-                          {result.cost === 0 ? "FREE" : `$${result.cost.toFixed(4)}`}
+                          {result.cost === 0 ? "FREE" : `${result.cost.toFixed(4)}`}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -575,6 +748,45 @@ export default function DashboardPage() {
                           ))}
                         </div>
 
+                        {/* Follow-up Message Input */}
+                        <div className="border-t border-gray-200 pt-4">
+                          <div className="flex space-x-2">
+                            <div className="flex-1">
+                              <Textarea
+                                value={followUpMessages[result.id] || ''}
+                                onChange={(e) => setFollowUpMessages(prev => ({ 
+                                  ...prev, 
+                                  [result.id]: e.target.value 
+                                }))}
+                                placeholder={`Ask ${result.model.replace('-', ' ')} a follow-up question...`}
+                                className="min-h-[60px] text-sm resize-none"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleFollowUp(result.id, result.model, followUpMessages[result.id] || '');
+                                  }
+                                }}
+                                disabled={sendingFollowUp[result.id]}
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => handleFollowUp(result.id, result.model, followUpMessages[result.id] || '')}
+                              disabled={!followUpMessages[result.id]?.trim() || sendingFollowUp[result.id]}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3"
+                            >
+                              {sendingFollowUp[result.id] ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            💡 Press Enter to send • Shift+Enter for new line
+                          </p>
+                        </div>
+
                         {/* Metrics */}
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
@@ -587,7 +799,7 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <p className="text-gray-500">Cost</p>
-                            <p className="font-medium">{result.cost === 0 ? "FREE" : `$${result.cost.toFixed(4)}`}</p>
+                            <p className="font-medium">{result.cost === 0 ? "FREE" : `${result.cost.toFixed(4)}`}</p>
                           </div>
                         </div>
                       </div>
@@ -609,7 +821,7 @@ export default function DashboardPage() {
                         </Badge>
                       </CardTitle>
                       <Badge className="bg-gray-100 text-gray-800">
-                        {conversation.cost === 0 ? "FREE" : `$${conversation.cost.toFixed(4)}`}
+                        {conversation.cost === 0 ? "FREE" : `${conversation.cost.toFixed(4)}`}
                       </Badge>
                     </div>
                   </CardHeader>
