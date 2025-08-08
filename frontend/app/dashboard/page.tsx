@@ -217,24 +217,36 @@ export default function DashboardPage() {
   try {
     const { runTest } = useAIService();
     
-    console.log(`🚀 Running test with ${selectedModels.length} models (bypassing subscription check for testing)`);
+    console.log('🚀 Running test with 4 models (bypassing subscription check for testing)');
     
-    // BYPASS subscription check and directly call your backend
     const results = await runTest(selectedModels, prompt);
     
     console.log('✅ Got results from backend:', results);
-    setTestResults(results);
+    console.log('Type of results:', typeof results);
+    console.log('Results keys:', Object.keys(results));
+    console.log('Full results structure:', JSON.stringify(results, null, 2));
+    
+    // Try different ways to access the data
+    if (results.data) {
+      console.log('✅ Using results.data');
+      setTestResults(results.data);
+    } else if (results.results) {
+      console.log('✅ Using results.results directly');
+      setTestResults(results);
+    } else {
+      console.log('❌ Unknown structure, logging everything:');
+      console.log(results);
+      setTestResults(results);
+    }
     
   } catch (error) {
     console.error("❌ API call failed:", error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
-    // Only show demo mode if it's specifically a backend connection issue
     console.log('Error message:', errorMessage);
     
-    // For now, let's see the actual error instead of falling back to demo
-    setTestResults({
+    // Create proper error results structure
+    const errorResults = {
       id: Date.now().toString(),
       promptId: 'error',
       models: selectedModels,
@@ -249,7 +261,7 @@ export default function DashboardPage() {
           },
           {
             role: 'assistant',
-            content: `🔧 **Backend Test Error**\n\n${errorMessage}\n\n**Debug Info:**\n- Backend URL: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}\n- Models: ${selectedModels.join(', ')}\n- This should help us see what's wrong!`,
+            content: `🔧 **Backend Test Error**\n\n${errorMessage}\n\n**Debug Info:**\n- Backend URL: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}\n- Models: ${selectedModels.join(', ')}\n- Check browser Network tab and backend logs!`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ],
@@ -262,8 +274,10 @@ export default function DashboardPage() {
       creditsUsed: 0,
       remainingCredits: 0,
       createdAt: new Date().toISOString(),
-      isDemoMode: false // Don't show as demo mode
-    });
+      isDemoMode: false
+    };
+    
+    setTestResults(errorResults);
   } finally {
     setTimeout(() => setIsRunning(false), 1500);
   }
@@ -504,7 +518,7 @@ export default function DashboardPage() {
 
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {(testResults.results || []).map((result: any, index: number) => (
+                {(testResults?.results || []).map((result: any, index: number) => (
                   <Card key={index} className={`h-fit ${testResults.isDemoMode ? 'border-blue-200' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
@@ -695,7 +709,7 @@ export default function DashboardPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Models tested</span>
-                      <span className="font-semibold">{testResults.results.length}</span>
+                      <span className="font-semibold">{testResults?.results?.length || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Credits used</span>

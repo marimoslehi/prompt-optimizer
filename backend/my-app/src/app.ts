@@ -7,6 +7,7 @@ import { apiRoutes } from './routes/index';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 
+
 // Load environment variables
 dotenv.config();
 
@@ -62,5 +63,13 @@ app.listen(PORT, () => {
     console.log(`📊 API available at http://localhost:${PORT}/api`);
     console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
 });
+
+console.log('🔍 Environment Variables Debug:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- PORT:', process.env.PORT);
+console.log('- GOOGLE_AI_API_KEY exists:', !!process.env.GOOGLE_AI_API_KEY);
+console.log('- GOOGLE_AI_API_KEY length:', process.env.GOOGLE_AI_API_KEY?.length || 0);
+console.log('- OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+console.log('- First 10 chars of Google key:', process.env.GOOGLE_AI_API_KEY?.substring(0, 10) || 'NONE');
 
 export default app;
