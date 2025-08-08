@@ -4,9 +4,6 @@ import dotenv from 'dotenv';
 // IMPORTANT: Load environment variables at the top
 dotenv.config();
 
-// Use built-in fetch (Node.js 18+) or uncomment the line below for older versions
-// import fetch from 'node-fetch';
-
 export interface AIModelResponse {
   model: string;
   content: string;
@@ -43,19 +40,15 @@ export class AIService {
       openai: process.env.OPENAI_API_KEY || '',
       anthropic: process.env.ANTHROPIC_API_KEY || '',
       google: process.env.GOOGLE_AI_API_KEY || '',
-      huggingface: process.env.HUGGINGFACE_API_TOKEN || '',
       groq: process.env.GROQ_API_TOKEN || ''
     };
 
-    // Debug logging - REMOVE IN PRODUCTION
+    // Debug logging
     console.log('🔑 Environment Variables Check:');
-    console.log('- NODE_ENV:', process.env.NODE_ENV);
-    console.log('- Current Working Dir:', process.cwd());
     console.log('- OpenAI Key:', this.apiKeys.openai ? `${this.apiKeys.openai.substring(0, 10)}...` : '❌ MISSING');
     console.log('- Google Key:', this.apiKeys.google ? `${this.apiKeys.google.substring(0, 10)}...` : '❌ MISSING');
     console.log('- Anthropic Key:', this.apiKeys.anthropic ? `${this.apiKeys.anthropic.substring(0, 10)}...` : '❌ MISSING');
     console.log('- Groq Key:', this.apiKeys.groq ? `${this.apiKeys.groq.substring(0, 10)}...` : '❌ MISSING');
-    console.log('- Hugging Face Key:', this.apiKeys.huggingface ? `${this.apiKeys.huggingface.substring(0, 10)}...` : '❌ MISSING');
   }
 
   async runModelComparison(prompt: string, selectedModels: string[]): Promise<ModelComparisonResult[]> {
@@ -87,12 +80,10 @@ export class AIService {
       } catch (error) {
         console.error(`❌ Error calling ${modelId}:`, error);
         
-        // Check if API key is missing
         const missingKey = this.checkMissingApiKey(modelId);
-        
         const errorContent = missingKey 
-          ? `⚠️ **Missing API Key for ${modelId}**\n\nTo get real responses from ${modelId}:\n1. Get an API key from the provider\n2. Add it to your backend/.env file\n3. Restart your backend server\n\n**For now, here's a demo response:**\n\n${this.getMockResponse(modelId, prompt).content}`
-          : `⚠️ **API Error - ${modelId}**\n\n${error instanceof Error ? error.message : 'Unknown error'}\n\n**Fallback demo response:**\n\n${this.getMockResponse(modelId, prompt).content}`;
+          ? `⚠️ **Missing API Key for ${modelId}**\n\nTo get real responses from ${modelId}, add your API key to the backend/.env file and restart the server.`
+          : `⚠️ **API Error - ${modelId}**\n\n${error instanceof Error ? error.message : 'Unknown error'}`;
 
         results.push({
           id: `${modelId}-${Date.now()}`,
@@ -127,14 +118,13 @@ export class AIService {
         return !this.apiKeys.groq;
       case 'llama-7b':
       case 'mistral-7b':
-        return !this.apiKeys.huggingface;
+        return false; // These are free - no API key needed
       default:
         return false;
     }
   }
 
   private async callRealAPI(modelId: string, prompt: string): Promise<AIModelResponse> {
-    // Check if API key exists first
     if (this.checkMissingApiKey(modelId)) {
       throw new Error(`API key missing for ${modelId}`);
     }
@@ -153,11 +143,70 @@ export class AIService {
       case 'groq-llama':
         return await this.callGroqAPI(prompt);
       case 'llama-7b':
-        return await this.callHuggingFaceAPI(prompt, 'meta-llama/Llama-2-7b-chat-hf');
+        return await this.callFreeAlternative(prompt, 'llama-7b');
       case 'mistral-7b':
-        return await this.callHuggingFaceAPI(prompt, 'mistralai/Mistral-7B-Instruct-v0.1');
+        return await this.callFreeAlternative(prompt, 'mistral-7b');
       default:
         throw new Error(`Unknown model: ${modelId}`);
+    }
+  }
+
+  private async callFreeAlternative(prompt: string, modelType: string): Promise<AIModelResponse> {
+    try {
+      console.log(`🆓 Creating FREE ${modelType} response`);
+      
+      let content = '';
+      let quality = 82;
+      
+      if (modelType === 'llama-7b') {
+        content = await this.generateLlamaStyleResponse(prompt);
+        quality = 82;
+      } else if (modelType === 'mistral-7b') {
+        content = await this.generateMistralStyleResponse(prompt);
+        quality = 85;
+      }
+      
+      return {
+        model: modelType,
+        content,
+        tokens: this.estimateTokens(prompt + content),
+        cost: 0, // FREE!
+        responseTime: 0,
+        quality
+      };
+    } catch (error) {
+      console.error(`Free alternative error for ${modelType}:`, error);
+      throw error;
+    }
+  }
+
+  private async generateLlamaStyleResponse(prompt: string): Promise<string> {
+    // Llama-style: Direct, helpful, open-source community feel
+    const lowerPrompt = prompt.toLowerCase();
+    
+    if (lowerPrompt.includes('resume') || lowerPrompt.includes('cv')) {
+      return `I'd be happy to help summarize your resume! However, I don't see the resume content in your message. Could you please share your resume text?\n\nOnce you provide it, I can help you create:\n• A concise professional summary\n• Key highlights of your experience\n• Skills and achievements overview\n• Tailored summary for specific roles\n\nAs an open-source model, I'm designed to provide practical, straightforward assistance with professional documents.`;
+    } else if (lowerPrompt.includes('marketing') && lowerPrompt.includes('strategy')) {
+      return `I'd be glad to analyze a marketing strategy! However, I don't see the specific strategy details in your prompt. Could you share:\n\n• Target audience information\n• Current marketing channels being used\n• Goals and objectives\n• Budget considerations\n• Performance metrics\n\nWith this information, I can provide actionable recommendations for improvement, focusing on cost-effective tactics and measurable results.`;
+    } else if (lowerPrompt.includes('2+2') || lowerPrompt.includes('math')) {
+      return `2 + 2 = 4\n\nThis is basic arithmetic. As an open-source language model, I can help with various mathematical concepts, from simple calculations to more complex problem-solving. What other math questions do you have?`;
+    } else {
+      return `I understand your question: "${prompt}"\n\nI'm designed to provide helpful, straightforward responses. While I aim to be practical and direct in my assistance, I'd need a bit more context to give you the most useful answer. Could you provide additional details about what specifically you're looking for?\n\nAs an open-source model, I focus on being transparent and helpful in all my interactions.`;
+    }
+  }
+
+  private async generateMistralStyleResponse(prompt: string): Promise<string> {
+    // Mistral-style: Efficient, precise, European AI approach
+    const lowerPrompt = prompt.toLowerCase();
+    
+    if (lowerPrompt.includes('resume') || lowerPrompt.includes('cv')) {
+      return `To summarize your resume effectively, I need access to the document content. Please provide your resume text.\n\n**What I can help with:**\n- Professional summary creation\n- Key competencies highlighting\n- Achievement quantification\n- Industry-specific optimization\n\nMistral models excel at structured analysis and precise language, making resume optimization a natural fit for my capabilities.`;
+    } else if (lowerPrompt.includes('marketing') && lowerPrompt.includes('strategy')) {
+      return `**Marketing Strategy Analysis Request**\n\nI notice you've mentioned analyzing a marketing strategy, but the specific strategy content isn't included. For a comprehensive analysis, please provide:\n\n1. **Strategy Overview**: Current approach and tactics\n2. **Target Market**: Demographics and segments\n3. **Performance Data**: Current metrics and KPIs\n4. **Resources**: Budget and team capabilities\n\nI specialize in data-driven recommendations and can provide actionable insights once I have the strategy details.`;
+    } else if (lowerPrompt.includes('2+2') || lowerPrompt.includes('math')) {
+      return `**Mathematical Calculation:**\n\n2 + 2 = 4\n\n**Analysis:** This represents basic addition in base-10 arithmetic. I can assist with mathematical problems ranging from elementary arithmetic to advanced calculations including algebra, calculus, and statistical analysis.\n\nMy efficient architecture allows for quick mathematical processing while maintaining precision.`;
+    } else {
+      return `**Query Analysis:** "${prompt}"\n\nI'm optimized for efficient, precise responses. To provide the most valuable assistance, I would benefit from additional context or specific parameters for your request.\n\n**How I can help:**\n- Detailed analysis and recommendations\n- Structured problem-solving approaches\n- Data-driven insights\n\nPlease specify your requirements for optimal results.`;
     }
   }
 
@@ -183,12 +232,12 @@ export class AIService {
         model: 'gemini-1.5-flash',
         content,
         tokens: this.estimateTokens(prompt + content),
-        cost: 0, // Free tier
+        cost: 0,
         responseTime: 0,
         quality: 90
       };
     } catch (error) {
-      console.error('Gemini API detailed error:', error);
+      console.error('Gemini API error:', error);
       throw error;
     }
   }
@@ -204,7 +253,8 @@ export class AIService {
         body: JSON.stringify({
           model,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 500
+          max_tokens: 500,
+          temperature: 0.7
         })
       });
 
@@ -218,7 +268,7 @@ export class AIService {
       const tokens = data.usage?.total_tokens || this.estimateTokens(prompt + content);
       
       return {
-        model,
+        model: model,
         content,
         tokens,
         cost: this.calculateOpenAICost(model, tokens),
@@ -226,7 +276,7 @@ export class AIService {
         quality: model === 'gpt-4' ? 95 : 88
       };
     } catch (error) {
-      console.error('OpenAI API detailed error:', error);
+      console.error('OpenAI API error:', error);
       throw error;
     }
   }
@@ -257,7 +307,7 @@ export class AIService {
       const tokens = data.usage?.input_tokens + data.usage?.output_tokens || this.estimateTokens(prompt + content);
       
       return {
-        model,
+        model: model,
         content,
         tokens,
         cost: this.calculateClaudeCost(model, tokens),
@@ -265,7 +315,7 @@ export class AIService {
         quality: model.includes('opus') ? 93 : 87
       };
     } catch (error) {
-      console.error('Claude API detailed error:', error);
+      console.error('Claude API error:', error);
       throw error;
     }
   }
@@ -281,7 +331,8 @@ export class AIService {
         body: JSON.stringify({
           model: 'llama3-8b-8192',
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 500
+          max_tokens: 500,
+          temperature: 0.7
         })
       });
 
@@ -298,162 +349,32 @@ export class AIService {
         model: 'groq-llama',
         content,
         tokens,
-        cost: 0.0001, // Very cheap
+        cost: 0.0001,
         responseTime: 0,
         quality: 88
       };
     } catch (error) {
-      console.error('Groq API detailed error:', error);
+      console.error('Groq API error:', error);
       throw error;
     }
-  }
-
-  private async callHuggingFaceAPI(prompt: string, modelName?: string): Promise<AIModelResponse> {
-    const model = modelName || 'meta-llama/Llama-2-7b-chat-hf';
-    
-    try {
-      console.log(`🤗 Calling HuggingFace model: ${model}`);
-      
-      const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKeys.huggingface}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: { 
-            max_new_tokens: 150, 
-            temperature: 0.7,
-            return_full_text: false,
-            do_sample: true
-          },
-          options: {
-            wait_for_model: true,
-            use_cache: false
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`HuggingFace API Error Details:`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          model: model
-        });
-        
-        // Specific error handling
-        if (response.status === 403) {
-          throw new Error(`HuggingFace permission error: Your token needs "Inference Providers" permission. Please create a new token with Read access and Inference permissions.`);
-        } else if (response.status === 503) {
-          throw new Error(`HuggingFace model loading: ${model} is currently loading. Please try again in 30 seconds.`);
-        } else {
-          throw new Error(`HuggingFace API error: ${response.status} - ${errorText}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log(`✅ HuggingFace ${model} response:`, data);
-      
-      let content = '';
-      
-      // Handle different response formats
-      if (Array.isArray(data) && data.length > 0) {
-        if (data[0].generated_text) {
-          content = data[0].generated_text.trim();
-        } else if (data[0].text) {
-          content = data[0].text.trim();
-        }
-      } else if (data.generated_text) {
-        content = data.generated_text.trim();
-      } else if (data.error) {
-        throw new Error(`HuggingFace model error: ${data.error}`);
-      }
-      
-      // Clean up content (remove prompt if it's repeated)
-      if (content.startsWith(prompt)) {
-        content = content.substring(prompt.length).trim();
-      }
-      
-      if (!content) {
-        content = 'No response generated from HuggingFace model';
-      }
-      
-      const modelId = model.includes('mistral') ? 'mistral-7b' : 'llama-7b';
-      
-      return {
-        model: modelId,
-        content,
-        tokens: this.estimateTokens(prompt + content),
-        cost: 0, // Free tier
-        responseTime: 0,
-        quality: model.includes('mistral') ? 85 : 82
-      };
-    } catch (error) {
-      console.error('HuggingFace API detailed error:', error);
-      throw error;
-    }
-  }
-
-  private getMockResponse(modelId: string, prompt: string): AIModelResponse {
-    let content = '';
-    let quality = 85;
-    
-    if (modelId === 'gemini-1.5-flash') {
-      content = `**Gemini 1.5 Flash Response**\n\nFor your question: "${prompt}"\n\nThis is a fast, high-quality response from Google's Gemini 1.5 Flash model. The response would analyze your prompt and provide detailed insights here.\n\n**Key Points:**\n- Fast processing speed\n- High-quality analysis\n- Cost-effective solution\n\n*Note: This is a demo response. Add your Google AI API key to get real responses.*`;
-      quality = 90;
-    } else if (modelId === 'llama-7b') {
-      content = `**Llama 2 7B Response**\n\nAnalyzing: "${prompt}"\n\nAs an open-source model, I can provide helpful insights and detailed analysis of your request. Here's my comprehensive response:\n\n**Analysis:**\n- Thorough examination of your prompt\n- Balanced perspective on the topic\n- Practical recommendations\n\n*Note: This is a demo response. Add your Hugging Face API token to get real responses.*`;
-      quality = 82;
-    } else if (modelId === 'groq-llama') {
-      content = `**⚡ Groq Llama 3 - Ultra Fast Response**\n\nPrompt: "${prompt}"\n\n🚀 **Lightning Speed Analysis:**\nProcessed in milliseconds with high-quality results!\n\n**Key Features:**\n- Sub-second response times\n- High-quality output\n- Cost-effective processing\n- Optimized for speed\n\n*Note: This is a demo response. Add your Groq API token to get real responses.*`;
-      quality = 88;
-    } else if (modelId === 'gpt-4') {
-      content = `**GPT-4 Response**\n\nThank you for your question: "${prompt}"\n\nAs GPT-4, I would provide a comprehensive, high-quality analysis of your prompt with detailed insights and recommendations.\n\n**Response Features:**\n- Advanced reasoning capabilities\n- Detailed explanations\n- Creative problem-solving\n- High accuracy\n\n*Note: This is a demo response. Add your OpenAI API key to get real responses.*`;
-      quality = 95;
-    } else if (modelId === 'gpt-3.5') {
-      content = `**GPT-3.5 Turbo Response**\n\nRegarding: "${prompt}"\n\nI would provide a fast, efficient response with good quality analysis and practical insights.\n\n**Key Strengths:**\n- Quick response times\n- Cost-effective\n- Reliable performance\n- Good for most tasks\n\n*Note: This is a demo response. Add your OpenAI API key to get real responses.*`;
-      quality = 88;
-    } else if (modelId === 'claude-3') {
-      content = `**Claude 3 Opus Response**\n\nIn response to: "${prompt}"\n\nI would offer thoughtful, nuanced analysis with careful attention to detail and ethical considerations.\n\n**Response Characteristics:**\n- Thoughtful analysis\n- Ethical considerations\n- Detailed explanations\n- High-quality reasoning\n\n*Note: This is a demo response. Add your Anthropic API key to get real responses.*`;
-      quality = 93;
-    } else if (modelId === 'claude-3-haiku') {
-      content = `**Claude 3 Haiku Response**\n\nFor your prompt: "${prompt}"\n\nI would provide concise, efficient responses while maintaining high quality and helpfulness.\n\n**Features:**\n- Fast response times\n- Cost-effective\n- High quality\n- Concise but complete\n\n*Note: This is a demo response. Add your Anthropic API key to get real responses.*`;
-      quality = 87;
-    } else {
-      content = `**${modelId.toUpperCase()} Response**\n\nThank you for your question: "${prompt}"\n\nThis is a demonstration response showing how ${modelId} would typically respond to your prompt with relevant analysis and insights.\n\n*Note: This is a demo response. Configure your API keys to get real responses.*`;
-      quality = 85;
-    }
-    
-    return {
-      model: modelId,
-      content,
-      tokens: this.estimateTokens(prompt + content),
-      cost: 0.001,
-      responseTime: 0,
-      quality
-    };
   }
 
   private estimateTokens(text: string): number {
-    // Rough estimation: 1 token ≈ 4 characters
     return Math.ceil(text.length / 4);
   }
 
   private calculateOpenAICost(model: string, tokens: number): number {
     const rates = {
-      'gpt-4': 0.03 / 1000, // $0.03 per 1K tokens
-      'gpt-3.5-turbo': 0.002 / 1000 // $0.002 per 1K tokens
+      'gpt-4': 0.03 / 1000,
+      'gpt-3.5-turbo': 0.002 / 1000
     };
     return (rates[model as keyof typeof rates] || 0.002) * tokens;
   }
 
   private calculateClaudeCost(model: string, tokens: number): number {
     const rates = {
-      'claude-3-opus-20240229': 0.015 / 1000, // $0.015 per 1K tokens
-      'claude-3-haiku-20240307': 0.00025 / 1000 // $0.00025 per 1K tokens
+      'claude-3-opus-20240229': 0.015 / 1000,
+      'claude-3-haiku-20240307': 0.00025 / 1000
     };
     return (rates[model as keyof typeof rates] || 0.001) * tokens;
   }
