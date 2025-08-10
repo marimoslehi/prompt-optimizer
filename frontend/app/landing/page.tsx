@@ -15,7 +15,10 @@ import {
   Eye,
   BarChart3,
   Shield,
-  Gauge
+  Gauge,
+  Key,
+  Users,
+  Building2
 } from "lucide-react"
 
 export default function LandingPage() {
@@ -33,79 +36,73 @@ export default function LandingPage() {
     {
       icon: <Gauge className="w-6 h-6 text-purple-600" />,
       title: "Instant Comparisons",
-      description: "Side-by-side results from GPT-4, Claude, and Gemini with quality scores and pricing"
+      description: "Side-by-side results from GPT-4, Claude, Gemini, and more with quality scores"
     },
     {
-      icon: <Zap className="w-6 h-6 text-emerald-600" />,
-      title: "Zero Setup Required",
-      description: "No API keys needed. Start comparing models in 30 seconds, not 30 minutes"
+      icon: <Key className="w-6 h-6 text-orange-600" />,
+      title: "Bring Your Own Keys",
+      description: "Use your existing API keys. We never charge for AI usage - only you control costs"
     }
   ]
 
-  const pricing = [
+  const howItWorks = [
     {
-      name: "Free Demo",
-      price: "$0",
-      description: "See how it works",
-      features: [
-        "Pre-recorded demos",
-        "4 sample scenarios",
-        "Full UI preview",
-        "No signup required"
-      ],
-      cta: "Try Demo",
-      popular: false,
-      href: "/demo"
+      step: "1",
+      title: "Add Your API Keys",
+      description: "Securely connect your OpenAI, Anthropic, or Google API keys"
     },
     {
-      name: "$1 Trial",
-      price: "$1",
-      description: "Test your prompts",
-      features: [
-        "10 real AI comparisons",
-        "All 3 models available",
-        "7-day access",
-        "$1 credited to plan"
-      ],
-      cta: "Start Trial",
-      popular: true,
-      href: "/onboarding"
+      step: "2",
+      title: "Enter Your Prompt",
+      description: "Type your prompt once, and we'll test it across all models"
     },
     {
-      name: "Starter Plan",
-      price: "$29",
-      description: "Full access",
-      features: [
-        "10,000 tokens included",
-        "All models available",
-        "Usage analytics",
-        "$0.01 per extra 100 tokens"
-      ],
-      cta: "Subscribe",
-      popular: false,
-      href: "/onboarding"
+      step: "3",
+      title: "Compare Results",
+      description: "See quality scores, costs, and response times side-by-side"
+    },
+    {
+      step: "4",
+      title: "Save Money",
+      description: "Pick the best model for each task and cut your AI costs by 60-90%"
     }
   ]
 
   const testimonials = [
     {
-      name: "Jake Morrison",
+      name: "Sarah Chen",
+      role: "CTO at TechStartup",
+      content: "We were burning $5K/month on GPT-4 for everything. Prompt Optimizer showed us which tasks could use cheaper models. Now we spend $1.2K for the same output quality.",
+      avatar: "SC",
+      savings: "$3,800/month saved"
+    },
+    {
+      name: "Mike Johnson",
+      role: "AI Engineer",
+      content: "The quality scoring is incredible. I always wondered if Claude or Gemini could handle our prompts. Now I know exactly when to use each model.",
+      avatar: "MJ",
+      savings: "70% cost reduction"
+    },
+    {
+      name: "Emily Rodriguez",
       role: "Marketing Director",
-      content: "I was spending $300/month on GPT-4 for content creation. Prompt Optimizer showed me Claude could do the same quality for $15/month. Saved me $285 the first month alone!",
-      avatar: "JM"
-    },
-    {
-      name: "Lisa Kim",
-      role: "Product Manager",
-      content: "Instead of guessing which model to use, now I test once and know exactly which gives the best results for each type of prompt. No more expensive mistakes.",
-      avatar: "LK"
-    },
-    {
-      name: "David Rodriguez",
-      role: "Founder, AI Startup",
-      content: "The $1 trial convinced me immediately. Seeing my actual prompts compared across 3 models was eye-opening. Now I never use expensive models for simple tasks.",
-      avatar: "DR"
+      content: "Free forever with our own API keys? Perfect! No vendor lock-in, no surprise bills. Just pure value in helping us optimize our AI spending.",
+      avatar: "ER",
+      savings: "$2,100/month saved"
     }
+  ]
+
+  const freeModels = [
+    { name: "Gemini 1.5 Flash", provider: "Google", description: "Fast, free tier available" },
+    { name: "Groq Llama 3", provider: "Groq", description: "Ultra-fast inference" }
+  ]
+
+  const paidModels = [
+    { name: "GPT-4", provider: "OpenAI" },
+    { name: "Claude 3 Opus", provider: "Anthropic" },
+    { name: "Gemini Pro", provider: "Google" },
+    { name: "GPT-3.5 Turbo", provider: "OpenAI" },
+    { name: "Claude 3 Haiku", provider: "Anthropic" }
   ]
 
   return (
@@ -120,15 +117,15 @@ export default function LandingPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Prompt Optimizer</h1>
-                <p className="text-xs text-gray-500">AI Cost Intelligence Platform</p>
+                <p className="text-xs text-gray-500">100% Free AI Comparison Tool</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
               <nav className="hidden md:flex items-center space-x-6">
                 <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
-                <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
-                <a href="#demo" className="text-gray-600 hover:text-gray-900 transition-colors">Demo</a>
+                <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">How It Works</a>
+                <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition-colors">Success Stories</a>
               </nav>
               
               <div className="flex items-center space-x-3">
@@ -137,9 +134,9 @@ export default function LandingPage() {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/onboarding">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Start Free Demo
+                <Link href="/dashboard">
+                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+                    Start Free
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
@@ -152,93 +149,128 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto text-center">
-          <Badge className="mb-6 bg-red-100 text-red-800 hover:bg-red-100">
+          <Badge className="mb-6 bg-green-100 text-green-800 hover:bg-green-100">
             <Sparkles className="w-3 h-3 mr-1" />
-            New: Test 3 AI Models with $1 Trial
+            100% Free Forever - No Credit Card Required
           </Badge>
           
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Stop Overpaying for AI - Find Your
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Perfect Model Match</span>
+            Stop Overpaying for AI
+            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Compare Models, Save Money
+            </span>
           </h1>
           
           <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Compare GPT-4, Claude, and Gemini responses instantly. Discover which model delivers the best value for YOUR specific prompts. Most users save 60-90% on AI costs.
+            Test your prompts across GPT-4, Claude, Gemini, and more - all in one place. 
+            See real costs, quality scores, and response times. Most teams save 60-90% on AI costs.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Button size="lg" className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 text-lg">
-              <Eye className="w-5 h-5 mr-2" />
-              Watch Demo (Free)
-            </Button>
-            <Link href="/onboarding">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg">
-                Start $1 Trial
-                <Play className="w-5 h-5 ml-2" />
+            <Link href="/dashboard">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all">
+                <Play className="w-5 h-5 mr-2" />
+                Start Comparing Models (Free)
               </Button>
             </Link>
+            <Button size="lg" variant="outline" className="px-8 py-4 text-lg">
+              <Eye className="w-5 h-5 mr-2" />
+              Watch 2-Min Demo
+            </Button>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-500 max-w-3xl mx-auto">
             <div className="flex items-center justify-center space-x-2">
               <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>See 3 model comparison instantly</span>
+              <span>No payment required</span>
             </div>
             <div className="flex items-center justify-center space-x-2">
               <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>Real responses for just $1</span>
+              <span>Use your own API keys</span>
             </div>
             <div className="flex items-center justify-center space-x-2">
               <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>$1 credited to first month</span>
+              <span>Compare 10+ models</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Problem Section */}
       <section className="py-16 px-6 bg-white/50">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 text-center">
-            <div>
-              <div className="text-3xl font-bold text-blue-600 mb-2">85%</div>
-              <div className="text-gray-600">Average Savings</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-green-600 mb-2">10 Seconds</div>
-              <div className="text-gray-600">To Compare Models</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">3</div>
-              <div className="text-gray-600">AI Models Ready</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-orange-600 mb-2">$0.01</div>
-              <div className="text-gray-600">Cost Per Comparison</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-emerald-600 mb-2">99%</div>
-              <div className="text-gray-600">User Satisfaction</div>
-            </div>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              The Hidden Cost of Using the Wrong AI Model
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="p-6 bg-red-50 border-red-200">
+              <CardContent className="p-0">
+                <DollarSign className="w-8 h-8 text-red-600 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Overpaying by 10-100x</h3>
+                <p className="text-gray-700">Using GPT-4 for simple tasks that Gemini Flash could handle for free</p>
+              </CardContent>
+            </Card>
+            <Card className="p-6 bg-orange-50 border-orange-200">
+              <CardContent className="p-0">
+                <Clock className="w-8 h-8 text-orange-600 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Wasting Developer Time</h3>
+                <p className="text-gray-700">Manually testing each model takes hours of copy-pasting</p>
+              </CardContent>
+            </Card>
+            <Card className="p-6 bg-yellow-50 border-yellow-200">
+              <CardContent className="p-0">
+                <Target className="w-8 h-8 text-yellow-600 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Guessing at Quality</h3>
+                <p className="text-gray-700">No way to objectively compare which model performs best</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Value Proposition Section */}
-      <section id="features" className="py-20 px-6">
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Find Your Perfect AI Model in Seconds
+              How It Works
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Stop guessing which AI model to use. Our platform tests your exact prompts across multiple models and shows you real cost/quality comparisons.
+              Four simple steps to optimize your AI costs
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-4 gap-8">
+            {howItWorks.map((step, index) => (
+              <div key={index} className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+                  {step.step}
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 px-6 bg-white/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Everything You Need to Optimize AI Costs
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Powerful features that help you make data-driven decisions about AI model selection
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-white/80 backdrop-blur-sm">
+              <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-white">
                 <CardContent className="p-0">
                   <div className="mb-4">{feature.icon}</div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -250,70 +282,86 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-6 bg-white/50">
+      {/* Models Section */}
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Simple pricing that protects your budget
+              Compare All Major AI Models
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Start with our demo, then pay only for what you use. No surprises, no huge commitments.
+              Test across multiple providers to find your perfect match
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            {pricing.map((plan, index) => (
-              <Card key={index} className={`relative p-8 ${plan.popular ? 'ring-2 ring-blue-500 bg-white transform scale-105' : 'bg-white/80'}`}>
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white">
-                    Most Popular
-                  </Badge>
-                )}
-                <CardContent className="p-0">
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    <div className="text-4xl font-bold text-gray-900 mb-2">
-                      {plan.price}
-                      {plan.name === "Starter Plan" && <span className="text-lg text-gray-500">/month</span>}
-                    </div>
-                    <p className="text-gray-600">{plan.description}</p>
-                  </div>
-                  
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start space-x-3">
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Link href={plan.href}>
-                    <Button className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-900 hover:bg-gray-800'}`}>
-                      {plan.cta}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid md:grid-cols-2 gap-12">
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <Zap className="w-6 h-6 text-green-600 mr-2" />
+                Free Tier Models
+              </h3>
+              <div className="space-y-4">
+                {freeModels.map((model, index) => (
+                  <Card key={index} className="p-4 bg-green-50 border-green-200">
+                    <CardContent className="p-0">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{model.name}</h4>
+                          <p className="text-sm text-gray-600">{model.provider}</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">
+                          No API Key Needed
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-2">{model.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <Key className="w-6 h-6 text-blue-600 mr-2" />
+                With Your API Keys
+              </h3>
+              <div className="space-y-3">
+                {paidModels.map((model, index) => (
+                  <Card key={index} className="p-4">
+                    <CardContent className="p-0">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{model.name}</h4>
+                          <p className="text-sm text-gray-600">{model.provider}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-20 px-6">
+      <section id="testimonials" className="py-20 px-6 bg-white/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              See why smart teams choose us over direct API access
+              Teams Saving Thousands Every Month
             </h2>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="p-6 bg-white/80 backdrop-blur-sm">
+              <Card key={index} className="p-6 bg-white hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
+                  <div className="mb-4">
+                    <Badge className="bg-green-100 text-green-800">
+                      {testimonial.savings}
+                    </Badge>
+                  </div>
                   <p className="text-gray-700 mb-6 italic">"{testimonial.content}"</p>
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
@@ -331,31 +379,51 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Business Features Teaser */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Card className="p-12 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+            <div className="text-center">
+              <Building2 className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Need Business Features?
+              </h2>
+              <p className="text-xl text-gray-700 mb-6 max-w-3xl mx-auto">
+                Looking for team management, API access, SSO, or enterprise features? 
+                Let us know what you need and we'll build it.
+              </p>
+              <Button variant="outline" size="lg" className="border-purple-300 text-purple-700 hover:bg-purple-100">
+                <Users className="w-5 h-5 mr-2" />
+                Request Business Features
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 px-6 bg-gradient-to-r from-blue-600 to-purple-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-4">
-            Ready to stop overpaying for AI?
+            Start Saving on AI Costs Today
           </h2>
-          <p className="text-xl text-blue-100 mb-2 max-w-2xl mx-auto">
-            Join hundreds of smart teams who've already optimized their AI spending.
-          </p>
-          <p className="text-lg text-blue-200 mb-8 font-medium">
-            Most users save $200+ in their first month
+          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            Join thousands of developers and teams who've already optimized their AI spending. 
+            100% free, forever.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 text-lg">
-              <Eye className="w-5 h-5 mr-2" />
-              Start Free Demo
-            </Button>
-            <Link href="/onboarding">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg">
-                $1 Trial
+            <Link href="/dashboard">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg shadow-lg">
+                Start Free Now
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
           </div>
+          
+          <p className="text-blue-200 mt-6 text-sm">
+            No credit card • No hidden fees • Just bring your API keys
+          </p>
         </div>
       </section>
 
@@ -371,44 +439,44 @@ export default function LandingPage() {
                 <span className="text-white font-bold text-lg">Prompt Optimizer</span>
               </div>
               <p className="text-gray-400">
-                Smart AI model selection for cost-conscious teams.
+                Free AI model comparison tool. Save money on every API call.
               </p>
             </div>
             
             <div>
               <h4 className="text-white font-semibold mb-4">Product</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-white transition-colors">Free Demo</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">$1 Trial</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Model Comparison</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cost Calculator</a></li>
+                <li><Link href="/dashboard" className="hover:text-white transition-colors">Model Comparison</Link></li>
+                <li><Link href="/dashboard" className="hover:text-white transition-colors">Cost Calculator</Link></li>
+                <li><Link href="/api-keys" className="hover:text-white transition-colors">API Key Setup</Link></li>
+                <li><Link href="/docs" className="hover:text-white transition-colors">Documentation</Link></li>
               </ul>
             </div>
             
             <div>
               <h4 className="text-white font-semibold mb-4">Resources</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-white transition-colors">Demo Library</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cost Savings Guide</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Cost Optimization Guide</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Model Comparison Chart</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Setup Guide</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">API Key Security</a></li>
+                <li><a href="https://github.com/yourusername/prompt-optimizer" className="hover:text-white transition-colors">GitHub</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Email Support</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Feature Requests</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Status Page</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">About</a></li>
+                <li><a href="/request-feature" className="hover:text-white transition-colors">Request Features</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-gray-700 mt-8 pt-8 text-center">
             <p className="text-gray-400">
-              © 2025 Prompt Optimizer. All rights reserved.
+              © 2025 Prompt Optimizer. Open source and free forever.
             </p>
           </div>
         </div>
