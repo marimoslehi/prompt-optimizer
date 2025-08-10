@@ -662,4 +662,3 @@ export default function MockDashboardPage() {
     </div>
   )
 }
-
