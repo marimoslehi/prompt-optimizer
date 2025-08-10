@@ -484,6 +484,31 @@ export default function DashboardPage() {
     savings: { amount: 1247, percentage: 67 }
   }
 
+  // Derived analytics for right panel
+  const monthlyRoi = dashboardData.lastMonth.cost
+    ? ((dashboardData.lastMonth.cost - dashboardData.thisMonth.cost) / dashboardData.lastMonth.cost) * 100
+    : 0
+  const avgCostPerQuery = dashboardData.thisMonth.tests
+    ? dashboardData.thisMonth.cost / dashboardData.thisMonth.tests
+    : 0
+  const totalComparisons = dashboardData.thisMonth.tests
+
+  const avgResponseTime = testResults?.results?.length
+    ? testResults.results.reduce((sum: number, r: any) => sum + (r.responseTime || 0), 0) /
+        testResults.results.length /
+        1000
+    : null
+  const avgQuality = testResults?.results?.length
+    ? testResults.results.reduce((sum: number, r: any) => sum + (r.quality || 0), 0) /
+        testResults.results.length
+    : null
+
+  const monthlyUsage = dashboardData.thisMonth.tests
+  const usagePercent = Math.min((monthlyUsage / 1000) * 100, 100)
+  const mostUsedModel = dashboardData.topModels?.[0]?.name || 'N/A'
+  const bestValueModel = dashboardData.topModels?.[1]?.name || 'N/A'
+  const successRate = testResults?.results?.length ? 100 : null
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -697,9 +722,6 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base font-medium capitalize flex items-center space-x-2">
                           <span>{result.model.replace('-', ' ')}</span>
-                          <Badge variant="outline" className="text-xs">
-                            Quality: {result.quality}%
-                          </Badge>
                           {testResults.isDemoMode && (
                             <Badge className="text-xs bg-blue-100 text-blue-800">
                               Demo
@@ -788,7 +810,11 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Metrics */}
-                        <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Quality</p>
+                            <p className="font-medium">{result.quality}%</p>
+                          </div>
                           <div>
                             <p className="text-gray-500">Tokens</p>
                             <p className="font-medium">{result.tokens.toLocaleString()}</p>
@@ -983,15 +1009,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Monthly ROI</span>
-                  <span className="font-semibold text-emerald-600">+340%</span>
+                  <span className="font-semibold text-emerald-600">{monthlyRoi.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Cost per Query</span>
-                  <span className="font-semibold">$0.0089</span>
+                  <span className="font-semibold">${avgCostPerQuery.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Comparisons</span>
-                  <span className="font-semibold">1,247</span>
+                  <span className="font-semibold">{totalComparisons}</span>
                 </div>
               </CardContent>
             </Card>
@@ -1007,15 +1033,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Response Time</span>
-                  <span className="font-semibold">1.4s</span>
+                  <span className="font-semibold">{avgResponseTime ? `${avgResponseTime.toFixed(1)}s` : '--'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Success Rate</span>
-                  <span className="font-semibold text-emerald-600">99.8%</span>
+                  <span className="font-semibold text-emerald-600">{successRate ? `${successRate}%` : '--'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Quality Score</span>
-                  <span className="font-semibold">89/100</span>
+                  <span className="font-semibold">{avgQuality ? `${avgQuality.toFixed(0)}/100` : '--'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -1032,18 +1058,18 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Monthly Usage</span>
-                    <span>247 / 1000</span>
+                    <span>{monthlyUsage} / 1000</span>
                   </div>
-                  <Progress value={24.7} className="h-2" />
+                  <Progress value={usagePercent} className="h-2" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Most used model</span>
-                    <span className="font-medium">GPT-4</span>
+                    <span className="font-medium capitalize">{mostUsedModel}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Best value model</span>
-                    <span className="font-medium">Claude Haiku</span>
+                    <span className="font-medium capitalize">{bestValueModel}</span>
                   </div>
                 </div>
               </CardContent>
