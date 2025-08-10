@@ -10,7 +10,8 @@ import {
   RunTestRequest,
   CostAnalytics,
   UsageStats,
-  DashboardOverview
+  DashboardOverview,
+  ApiKey
 } from './types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -117,6 +118,15 @@ class ApiClient {
 
   async getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
     return this.request<DashboardOverview>('/analytics/dashboard');
+  }
+
+  // API Keys
+  async getApiKeys(): Promise<ApiResponse<{ keys: ApiKey[] }>> {
+    return this.request<{ keys: ApiKey[] }>('/keys');
+  }
+
+  async validateApiKey(provider: string): Promise<ApiResponse<{ valid: boolean }>> {
+    return this.request<{ valid: boolean }>(`/keys/validate/${provider}`);
   }
 }
 

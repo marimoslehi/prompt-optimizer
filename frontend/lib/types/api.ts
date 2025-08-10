@@ -117,3 +117,12 @@ export interface DashboardOverview {
     cost: number;
   }>;
 }
+
+// API Key Types
+export interface ApiKey {
+  id: string;
+  provider: string;
+  createdAt: string;
+  lastUsed: string | null;
+  valid: boolean;
+}

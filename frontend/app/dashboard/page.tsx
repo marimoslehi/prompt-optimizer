@@ -9,28 +9,30 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { 
-  Play, 
-  Download, 
-  Settings, 
-  TrendingDown, 
-  DollarSign, 
-  Clock, 
-  BarChart3, 
-  FileText, 
-  Bell, 
-  User, 
+import {
+  Play,
+  Download,
+  Settings,
+  TrendingDown,
+  DollarSign,
+  Clock,
+  BarChart3,
+  FileText,
+  Bell,
+  User,
   Bot,
-  Crown,
   Zap,
   AlertCircle,
   ArrowRight,
-  CreditCard,
-  Send
+  Send,
+  Shield,
+  CheckCircle,
+  XCircle,
+  Key
 } from "lucide-react"
-import { useDashboardOverview, useCostAnalytics, usePrompts } from "@/hooks/useApi"
+import { useDashboardOverview, useCostAnalytics, usePrompts, useApiKeys } from "@/hooks/useApi"
 import { useAIService } from "@/lib/ai-service"
-import { SubscriptionStatus, SubscriptionBadge } from "@/components/SubscriptionStatus"
+import { apiClient } from "@/lib/api"
 
 const models = [
   // FREE MODELS (Real AI Responses)
@@ -115,6 +117,13 @@ const models = [
   },
 ]
 
+const apiProviders = [
+  { id: 'openai', name: 'OpenAI' },
+  { id: 'anthropic', name: 'Anthropic' },
+  { id: 'google', name: 'Google' },
+  { id: 'groq', name: 'Groq' },
+]
+
 // Enhanced mock responses with conversation-style interactions for fallback
 const mockConversations = [
   {
@@ -192,12 +201,24 @@ export default function DashboardPage() {
   const { data: overview, loading: overviewLoading, error: overviewError } = useDashboardOverview()
   const { data: costAnalytics, loading: costLoading } = useCostAnalytics('30d')
   const { data: promptsData, loading: promptsLoading } = usePrompts()
+  const { data: apiKeysData, loading: apiKeysLoading } = useApiKeys()
+  const apiKeys = apiKeysData?.keys || []
+  const hasApiKeys = apiKeys.length > 0
 
   const handleModelToggle = (modelId: string, checked: boolean | string) => {
     const isChecked = checked === true || checked === "indeterminate";
     setSelectedModels((prev) =>
       isChecked ? [...new Set([...prev, modelId])] : prev.filter((id) => id !== modelId)
     );
+  };
+
+  const handleValidateKey = async (provider: string) => {
+    try {
+      const res = await apiClient.validateApiKey(provider);
+      alert(res.data.valid ? 'API key is valid' : 'API key is invalid');
+    } catch (err) {
+      alert('Validation failed');
+    }
   };
 
   const ensureUserMessage = (messages: { role: string; content: string }[]) => {
@@ -444,8 +465,6 @@ export default function DashboardPage() {
           quality: 0
         })),
         totalCost: 0,
-        creditsUsed: 0,
-        remainingCredits: 0,
         createdAt: new Date().toISOString(),
         isDemoMode: false
       };
@@ -457,13 +476,39 @@ export default function DashboardPage() {
   };
 
   // Show loading state
-  if (overviewLoading || costLoading || promptsLoading) {
+  if (overviewLoading || costLoading || promptsLoading || apiKeysLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-slate-600">Loading dashboard...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (!hasApiKeys) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Key className="w-4 h-4 mr-2" />
+              Add API Keys to Get Started
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Connect at least one AI provider to use Prompt Optimizer.
+            </p>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => window.location.href = '/settings/api-keys'}>
+              Add API Key
+            </Button>
+            <p className="text-xs text-gray-500 flex items-center justify-center">
+              <Shield className="w-3 h-3 mr-1" /> Keys encrypted & secure
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -484,6 +529,31 @@ export default function DashboardPage() {
     savings: { amount: 1247, percentage: 67 }
   }
 
+  // Derived analytics for right panel
+  const monthlyRoi = dashboardData.lastMonth.cost
+    ? ((dashboardData.lastMonth.cost - dashboardData.thisMonth.cost) / dashboardData.lastMonth.cost) * 100
+    : 0
+  const avgCostPerQuery = dashboardData.thisMonth.tests
+    ? dashboardData.thisMonth.cost / dashboardData.thisMonth.tests
+    : 0
+  const totalComparisons = dashboardData.thisMonth.tests
+
+  const avgResponseTime = testResults?.results?.length
+    ? testResults.results.reduce((sum: number, r: any) => sum + (r.responseTime || 0), 0) /
+        testResults.results.length /
+        1000
+    : null
+  const avgQuality = testResults?.results?.length
+    ? testResults.results.reduce((sum: number, r: any) => sum + (r.quality || 0), 0) /
+        testResults.results.length
+    : null
+
+  const monthlyUsage = dashboardData.thisMonth.tests
+  const usagePercent = Math.min((monthlyUsage / 1000) * 100, 100)
+  const mostUsedModel = dashboardData.topModels?.[0]?.name || 'N/A'
+  const bestValueModel = dashboardData.topModels?.[1]?.name || 'N/A'
+  const successRate = testResults?.results?.length ? 100 : null
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -500,7 +570,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <SubscriptionBadge />
               {overviewError && (
                 <Badge variant="outline" className="text-orange-600 border-orange-200">
                   Mock Analytics
@@ -533,18 +602,12 @@ export default function DashboardPage() {
         {/* Left Sidebar - Prompt Editor & Model Selection */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
-            {/* Subscription Status */}
-            <SubscriptionStatus onUpgrade={() => {
-              // Refresh page after successful upgrade
-              window.location.reload();
-            }} />
-
             {/* Demo Mode Alert */}
             {testResults?.isDemoMode && (
               <Alert className="border-blue-200 bg-blue-50">
                 <AlertCircle className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                  <strong>Demo Mode:</strong> Showing sample responses. Sign in or upgrade for real AI results!
+                  <strong>Demo Mode:</strong> Showing sample responses. Sign in for real AI results!
                 </AlertDescription>
               </Alert>
             )}
@@ -641,33 +704,6 @@ export default function DashboardPage() {
 
           {testResults ? (
             <div>
-              {/* Credits Usage Summary */}
-              {testResults.creditsUsed > 0 && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">
-                        💳 Credits used: {testResults.creditsUsed}
-                      </p>
-                      <p className="text-xs text-blue-700">
-                        Remaining: {testResults.remainingCredits}
-                      </p>
-                    </div>
-                    {testResults.remainingCredits <= 5 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-200"
-                        onClick={() => window.location.href = '/pricing'}
-                      >
-                        <Crown className="w-4 h-4 mr-1" />
-                        Upgrade
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Demo Mode Banner */}
               {testResults.isDemoMode && (
                 <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg">
@@ -697,9 +733,6 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base font-medium capitalize flex items-center space-x-2">
                           <span>{result.model.replace('-', ' ')}</span>
-                          <Badge variant="outline" className="text-xs">
-                            Quality: {result.quality}%
-                          </Badge>
                           {testResults.isDemoMode && (
                             <Badge className="text-xs bg-blue-100 text-blue-800">
                               Demo
@@ -788,7 +821,11 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Metrics */}
-                        <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Quality</p>
+                            <p className="font-medium">{result.quality}%</p>
+                          </div>
                           <div>
                             <p className="text-gray-500">Tokens</p>
                             <p className="font-medium">{result.tokens.toLocaleString()}</p>
@@ -908,6 +945,51 @@ export default function DashboardPage() {
         {/* Right Panel - Metrics & Analytics */}
         <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
+            {/* API Key Status */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center">
+                  <Key className="w-4 h-4 mr-2" />
+                  API Key Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {apiProviders.map((p) => {
+                    const key = apiKeys.find(k => k.provider === p.id);
+                    return (
+                      <div key={p.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{p.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {key ? `Last used: ${key.lastUsed ? new Date(key.lastUsed).toLocaleDateString() : 'Never'}` : 'Not connected'}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {key ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 text-emerald-600" />
+                              <Button size="xs" variant="outline" onClick={() => handleValidateKey(p.id)}>
+                                Test
+                              </Button>
+                            </>
+                          ) : (
+                            <XCircle className="w-4 h-4 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => window.location.href = '/settings/api-keys'}>
+                  Add API Key
+                </Button>
+                <p className="text-xs text-gray-500 mt-2 flex items-center">
+                  <Shield className="w-3 h-3 mr-1" /> Keys encrypted & secure
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Test Summary */}
             {testResults && (
               <Card className={testResults.isDemoMode ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"}>
@@ -922,12 +1004,6 @@ export default function DashboardPage() {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Models tested</span>
                       <span className="font-semibold">{testResults?.results?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Credits used</span>
-                      <span className="font-semibold">
-                        {testResults.isDemoMode ? '0 (Demo)' : testResults.creditsUsed || 0}
-                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Total cost</span>
@@ -983,15 +1059,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Monthly ROI</span>
-                  <span className="font-semibold text-emerald-600">+340%</span>
+                  <span className="font-semibold text-emerald-600">{monthlyRoi.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Cost per Query</span>
-                  <span className="font-semibold">$0.0089</span>
+                  <span className="font-semibold">${avgCostPerQuery.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Comparisons</span>
-                  <span className="font-semibold">1,247</span>
+                  <span className="font-semibold">{totalComparisons}</span>
                 </div>
               </CardContent>
             </Card>
@@ -1007,15 +1083,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Response Time</span>
-                  <span className="font-semibold">1.4s</span>
+                  <span className="font-semibold">{avgResponseTime ? `${avgResponseTime.toFixed(1)}s` : '--'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Success Rate</span>
-                  <span className="font-semibold text-emerald-600">99.8%</span>
+                  <span className="font-semibold text-emerald-600">{successRate ? `${successRate}%` : '--'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Quality Score</span>
-                  <span className="font-semibold">89/100</span>
+                  <span className="font-semibold">{avgQuality ? `${avgQuality.toFixed(0)}/100` : '--'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -1032,18 +1108,18 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Monthly Usage</span>
-                    <span>247 / 1000</span>
+                    <span>{monthlyUsage} / 1000</span>
                   </div>
-                  <Progress value={24.7} className="h-2" />
+                  <Progress value={usagePercent} className="h-2" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Most used model</span>
-                    <span className="font-medium">GPT-4</span>
+                    <span className="font-medium capitalize">{mostUsedModel}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Best value model</span>
-                    <span className="font-medium">Claude Haiku</span>
+                    <span className="font-medium capitalize">{bestValueModel}</span>
                   </div>
                 </div>
               </CardContent>

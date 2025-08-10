@@ -59,3 +59,7 @@ export function useDashboardOverview() {
 export function useCostAnalytics(period: string = '30d') {
   return useApi(() => apiClient.getCostAnalytics(period), [period]);
 }
+
+export function useApiKeys() {
+  return useApi(() => apiClient.getApiKeys());
+}
