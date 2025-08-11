@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -61,6 +62,7 @@ interface PreferencesData {
 
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(1)
+  const router = useRouter()
 
   // Step 1 data
   const [userData, setUserData] = useState<UserData>({
@@ -235,6 +237,37 @@ export default function OnboardingWizard() {
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleComplete = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+    try {
+      await fetch(`${API_BASE_URL}/users/profile`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userData, preferences, onboardingComplete: true }),
+      })
+
+      const keyPromises = Object.entries(apiKeys)
+        .filter(([_, keyState]) => keyState.value.trim())
+        .map(([provider, keyState]) =>
+          fetch(`${API_BASE_URL}/keys`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ provider, key: keyState.value }),
+          }),
+        )
+
+      await Promise.all(keyPromises)
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Failed to complete onboarding", error)
     }
   }
 
@@ -855,7 +888,7 @@ export default function OnboardingWizard() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-8">
+              <Button onClick={handleComplete} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8">
                 Get Started
                 <Sparkles className="w-4 h-4 ml-2" />
               </Button>
