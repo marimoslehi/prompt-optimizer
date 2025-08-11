@@ -134,7 +134,7 @@ export default function LandingPage() {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/dashboard">
+                <Link href="/sign-up">
                   <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
                     Start Free
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -167,7 +167,7 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Link href="/dashboard">
+            <Link href="/sign-up">
               <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all">
                 <Play className="w-5 h-5 mr-2" />
                 Start Comparing Models (Free)
@@ -413,7 +413,7 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/sign-up">
               <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg shadow-lg">
                 Start Free Now
                 <ArrowRight className="w-5 h-5 ml-2" />
