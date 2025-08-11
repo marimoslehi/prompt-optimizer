@@ -17,7 +17,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/a
 
 class ApiClient {
   private getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token =
+        localStorage.getItem('auth_token') ??
+        sessionStorage.getItem('auth_token');
+    }
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
