@@ -1,7 +1,6 @@
 // backend/my-app/src/services/aiService.ts
 import dotenv from 'dotenv';
 
-// IMPORTANT: Load environment variables at the top
 dotenv.config();
 
 export interface AIModelResponse {
@@ -30,28 +29,10 @@ export interface ModelComparisonResult {
 }
 
 export class AIService {
-  private apiKeys: any;
-  
-  constructor() {
-    // Force reload environment variables
-    dotenv.config();
-    
-    this.apiKeys = {
-      openai: process.env.OPENAI_API_KEY || '',
-      anthropic: process.env.ANTHROPIC_API_KEY || '',
-      google: process.env.GOOGLE_AI_API_KEY || '',
-      groq: process.env.GROQ_API_TOKEN || ''
-    };
+  private apiKeys: any = {};
 
-    // Debug logging
-    console.log('🔑 Environment Variables Check:');
-    console.log('- OpenAI Key:', this.apiKeys.openai ? `${this.apiKeys.openai.substring(0, 10)}...` : '❌ MISSING');
-    console.log('- Google Key:', this.apiKeys.google ? `${this.apiKeys.google.substring(0, 10)}...` : '❌ MISSING');
-    console.log('- Anthropic Key:', this.apiKeys.anthropic ? `${this.apiKeys.anthropic.substring(0, 10)}...` : '❌ MISSING');
-    console.log('- Groq Key:', this.apiKeys.groq ? `${this.apiKeys.groq.substring(0, 10)}...` : '❌ MISSING');
-  }
-
-  async runModelComparison(prompt: string, selectedModels: string[]): Promise<ModelComparisonResult[]> {
+  async runModelComparison(prompt: string, selectedModels: string[], apiKeys: any = {}): Promise<ModelComparisonResult[]> {
+    this.apiKeys = apiKeys;
     const results: ModelComparisonResult[] = [];
     
     for (const modelId of selectedModels) {
@@ -85,8 +66,8 @@ export class AIService {
         console.error(`❌ Error calling ${modelId}:`, error);
         
         const missingKey = this.checkMissingApiKey(modelId);
-        const errorContent = missingKey 
-          ? `⚠️ **Missing API Key for ${modelId}**\n\nTo get real responses from ${modelId}, add your API key to the backend/.env file and restart the server.`
+        const errorContent = missingKey
+          ? `⚠️ **Missing API Key for ${modelId}**\n\nAdd a valid API key for this provider in your dashboard settings.`
           : `⚠️ **API Error - ${modelId}**\n\n${error instanceof Error ? error.message : 'Unknown error'}`;
 
         results.push({
@@ -137,19 +118,15 @@ export class AIService {
   private checkMissingApiKey(modelId: string): boolean {
     switch (modelId) {
       case 'gpt-4':
-      case 'gpt-3.5':
+      case 'gpt-3.5-turbo':
         return !this.apiKeys.openai;
-      case 'claude-3':
-      case 'claude-3-haiku':
+      case 'claude-3-opus-20240229':
+      case 'claude-3-haiku-20240307':
         return !this.apiKeys.anthropic;
       case 'gemini-1.5-flash':
-      case 'gemini-pro':
         return !this.apiKeys.google;
-      case 'groq-llama':
+      case 'llama3-8b-8192':
         return !this.apiKeys.groq;
-      case 'llama-7b':
-      case 'mistral-7b':
-        return false; // These are free - no API key needed
       default:
         return false;
     }
@@ -165,13 +142,13 @@ export class AIService {
         return await this.callGeminiAPI(prompt);
       case 'gpt-4':
         return await this.callOpenAIAPI(prompt, 'gpt-4');
-      case 'gpt-3.5':
+      case 'gpt-3.5-turbo':
         return await this.callOpenAIAPI(prompt, 'gpt-3.5-turbo');
-      case 'claude-3':
+      case 'claude-3-opus-20240229':
         return await this.callClaudeAPI(prompt, 'claude-3-opus-20240229');
-      case 'claude-3-haiku':
+      case 'claude-3-haiku-20240307':
         return await this.callClaudeAPI(prompt, 'claude-3-haiku-20240307');
-      case 'groq-llama':
+      case 'llama3-8b-8192':
         return await this.callGroqAPI(prompt);
       case 'llama-7b':
         return await this.callSmartMockAPI(prompt, 'llama-7b');

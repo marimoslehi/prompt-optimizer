@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AIService } from '../services/aiService';
+import { ApiKeyService } from '../services/apiKeyService';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -11,10 +12,12 @@ interface AuthenticatedRequest extends Request {
 
 export class AIController {
   private aiService = new AIService();
+  private keyService = new ApiKeyService();
 
   compareModels = async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { prompt, models, options } = req.body;
+      const { prompt, models } = req.body;
+      const userId = Number(req.user?.id);
 
       if (!prompt || !models || !Array.isArray(models)) {
         return res.status(400).json({
@@ -23,7 +26,19 @@ export class AIController {
         });
       }
 
-      const results = await this.aiService.runModelComparison(prompt, models);
+      for (const model of models) {
+        const allowed = await this.keyService.hasAccessToModel(userId, model);
+        if (!allowed) {
+          return res.status(403).json({ success: false, message: `Missing API key for model ${model}` });
+        }
+      }
+
+      const apiKeys = await this.keyService.getDecryptedKeys(userId);
+      const results = await this.aiService.runModelComparison(prompt, models, apiKeys);
+
+      for (const r of results) {
+        await this.keyService.recordUsage(userId, r.model, r.cost);
+      }
 
       res.json({
         success: true,
@@ -47,25 +62,10 @@ export class AIController {
     }
   };
 
-  getAvailableModels = async (req: Request, res: Response) => {
+  getAvailableModels = async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const models = [
-        {
-          id: 'gemini-1.5-flash',
-          name: 'Gemini 1.5 Flash',
-          provider: 'Google',
-          cost: 0,
-          description: 'Fast, high-quality responses. Free to use.'
-        },
-        {
-          id: 'llama-7b',
-          name: 'Llama 2 7B',
-          provider: 'Meta',
-          cost: 0.001,
-          description: 'Open-source model with balanced performance.'
-        }
-      ];
-
+      const userId = Number(req.user?.id);
+      const models = await this.keyService.getAvailableModels(userId);
       res.json({ success: true, data: models });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to get models' });
