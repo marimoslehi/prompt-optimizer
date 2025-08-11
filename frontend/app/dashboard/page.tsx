@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Play,
   Download,
@@ -22,8 +21,6 @@ import {
   User,
   Bot,
   Zap,
-  AlertCircle,
-  ArrowRight,
   Send,
   Shield,
   CheckCircle,
@@ -74,7 +71,7 @@ const models = [
     description: "Ultra-fast inference (sub-second)"
   },
   
-  // PREMIUM MODELS (Demo Responses - until you add API keys)
+  // PREMIUM MODELS (require your API keys)
   { 
     id: "gpt-4", 
     name: "GPT-4", 
@@ -465,8 +462,7 @@ export default function DashboardPage() {
           quality: 0
         })),
         totalCost: 0,
-        createdAt: new Date().toISOString(),
-        isDemoMode: false
+        createdAt: new Date().toISOString()
       };
       
       setTestResults(errorResults);
@@ -602,16 +598,6 @@ export default function DashboardPage() {
         {/* Left Sidebar - Prompt Editor & Model Selection */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
-            {/* Demo Mode Alert */}
-            {testResults?.isDemoMode && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>Demo Mode:</strong> Showing sample responses. Sign in for real AI results!
-                </AlertDescription>
-              </Alert>
-            )}
-
             {/* Analytics Status */}
             {overviewError && (
               <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -689,9 +675,6 @@ export default function DashboardPage() {
               )}
             </Button>
             
-            <p className="text-xs text-gray-500 text-center">
-              Each test uses 1 credit per model selected
-            </p>
           </div>
         </div>
 
@@ -704,40 +687,14 @@ export default function DashboardPage() {
 
           {testResults ? (
             <div>
-              {/* Demo Mode Banner */}
-              {testResults.isDemoMode && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">🎉 Demo Mode - Sample Responses</p>
-                      <p className="text-sm text-blue-100">Sign in to get real AI responses</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-white text-blue-600 border-white hover:bg-blue-50"
-                      onClick={() => window.location.href = '/sign-in'}
-                    >
-                      Sign In
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {(testResults?.results || []).map((result: any, index: number) => (
-                  <Card key={index} className={`h-fit ${testResults.isDemoMode ? 'border-blue-200' : ''}`}>
+                  <Card key={index} className="h-fit">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base font-medium capitalize flex items-center space-x-2">
                           <span>{result.model.replace('-', ' ')}</span>
-                          {testResults.isDemoMode && (
-                            <Badge className="text-xs bg-blue-100 text-blue-800">
-                              Demo
-                            </Badge>
-                          )}
                         </CardTitle>
                         <Badge
                           variant={result.cost === 0 ? "default" : result.cost < 0.01 ? "default" : "destructive"}
@@ -974,7 +931,12 @@ export default function DashboardPage() {
                               </Button>
                             </>
                           ) : (
-                            <XCircle className="w-4 h-4 text-gray-400" />
+                            <>
+                              <XCircle className="w-4 h-4 text-gray-400" />
+                              <Button size="xs" variant="outline" onClick={() => window.location.href = '/settings/api-keys'}>
+                                Add
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -992,11 +954,11 @@ export default function DashboardPage() {
 
             {/* Test Summary */}
             {testResults && (
-              <Card className={testResults.isDemoMode ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"}>
+              <Card className="bg-emerald-50 border-emerald-200">
                 <CardHeader className="pb-3">
-                  <CardTitle className={`text-base flex items-center ${testResults.isDemoMode ? 'text-blue-800' : 'text-emerald-800'}`}>
-                    {testResults.isDemoMode ? <AlertCircle className="w-4 h-4 mr-2" /> : <TrendingDown className="w-4 h-4 mr-2" />}
-                    {testResults.isDemoMode ? 'Demo Results' : 'Test Results'}
+                  <CardTitle className="text-base flex items-center text-emerald-800">
+                    <TrendingDown className="w-4 h-4 mr-2" />
+                    Test Results
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1008,21 +970,10 @@ export default function DashboardPage() {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Total cost</span>
                       <span className="font-semibold">
-                        {testResults.isDemoMode ? 'Free' : `${(testResults.totalCost || 0).toFixed(4)}`}
+                        {(testResults.totalCost || 0).toFixed(4)}
                       </span>
                     </div>
                   </div>
-                  {testResults.isDemoMode && (
-                    <div className="mt-4 pt-3 border-t border-blue-200">
-                      <Button
-                        size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={() => window.location.href = '/sign-in'}
-                      >
-                        Sign In for Real Results
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}
