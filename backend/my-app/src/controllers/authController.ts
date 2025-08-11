@@ -1,73 +1,59 @@
 import { Request, Response } from 'express';
+import { AuthService } from '../services/authService';
+import { UserService } from '../services/userService';
+
+interface AuthRequest extends Request {
+  user?: { id: string };
+}
 
 export class AuthController {
+  private auth = new AuthService();
+  private users = new UserService();
+
   register = async (req: Request, res: Response) => {
     try {
       const { email, password, name } = req.body;
-      
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: {
-          user: { id: '1', email, name },
-          token: 'mock_token_here'
-        }
-      });
+      const { user, token } = await this.auth.register({ email, password, name });
+      res.status(201).json({ success: true, data: { user, token } });
     } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   };
 
   login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: { id: '1', email },
-          token: 'mock_token_here'
-        }
-      });
+      const result = await this.auth.login(email, password);
+      if (!result) {
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      }
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(401).json({
-        success: false,
-        message: error.message
-      });
+      res.status(401).json({ success: false, message: error.message });
     }
   };
 
-  getProfile = async (req: Request, res: Response) => {
+  logout = async (_req: Request, res: Response) => {
+    res.json({ success: true });
+  };
+
+  getProfile = async (req: AuthRequest, res: Response) => {
     try {
-      res.status(200).json({
-        success: true,
-        data: {
-          user: { id: '1', email: 'user@example.com', name: 'User' }
-        }
-      });
+      const user = await this.users.getById(Number(req.user?.id));
+      res.status(200).json({ success: true, data: { user } });
     } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   };
 
-  refreshToken = async (req: Request, res: Response) => {
+  refreshToken = async (req: AuthRequest, res: Response) => {
     try {
-      res.status(200).json({
-        success: true,
-        data: { token: 'new_mock_token' }
-      });
+      const user = await this.users.getById(Number(req.user?.id));
+      if (!user) throw new Error('User not found');
+      const token = this.auth.generateToken(user);
+      res.status(200).json({ success: true, data: { token } });
     } catch (error: any) {
-      res.status(401).json({
-        success: false,
-        message: error.message
-      });
+      res.status(401).json({ success: false, message: error.message });
     }
   };
 }

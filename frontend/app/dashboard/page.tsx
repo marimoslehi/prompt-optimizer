@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,28 +9,29 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
 import { 
-  Play, 
-  Download, 
-  Settings, 
-  TrendingDown, 
-  DollarSign, 
-  Clock, 
-  BarChart3, 
-  FileText, 
-  Bell, 
-  User, 
+  Play,
+  Download,
+  Settings,
+  TrendingDown,
+  DollarSign,
+  Clock,
+  BarChart3,
+  FileText,
+  Bell,
+  User,
   Bot,
-  Crown,
   Zap,
   AlertCircle,
-  ArrowRight,
-  CreditCard,
-  Send
+  Send,
+  Key,
+  Plus,
+  Lock
 } from "lucide-react"
 import { useDashboardOverview, useCostAnalytics, usePrompts } from "@/hooks/useApi"
 import { useAIService } from "@/lib/ai-service"
-import { SubscriptionStatus, SubscriptionBadge } from "@/components/SubscriptionStatus"
+import { useAIProviders } from "@/lib/ai-providers"
 
 const models = [
   // FREE MODELS (Real AI Responses)
@@ -176,6 +177,12 @@ const mockConversations = [
   }
 ]
 
+const apiProviders = [
+  { id: 'openai', name: 'OpenAI', icon: '🤖' },
+  { id: 'anthropic', name: 'Anthropic', icon: '🧠' },
+  { id: 'google', name: 'Google AI', icon: '💎' },
+]
+
 export default function DashboardPage() {
   const [selectedModels, setSelectedModels] = useState(["gpt-4", "claude-3-haiku", "gemini-1.5-flash"])
   const [prompt, setPrompt] = useState(
@@ -183,6 +190,97 @@ export default function DashboardPage() {
   )
   const [isRunning, setIsRunning] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
+
+  // API Key Management
+  const { testApiKey } = useAIProviders()
+  const [apiKeys, setApiKeys] = useState<Record<string, { value: string; isConnected: boolean; isTesting: boolean; isEditing: boolean; lastUsed?: string; error?: string }>>({
+    openai: { value: '', isConnected: false, isTesting: false, isEditing: false },
+    anthropic: { value: '', isConnected: false, isTesting: false, isEditing: false },
+    google: { value: '', isConnected: false, isTesting: false, isEditing: false },
+  })
+
+  const [userName, setUserName] = useState('')
+
+  useEffect(() => {
+    fetch('/api/users/me')
+      .then(res => res.json())
+      .then(data => setUserName(data.data?.user?.name || ''))
+      .catch(() => {})
+  }, [])
+
+  const initials = userName
+    ? userName.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()
+    : 'U'
+
+  useEffect(() => {
+    const savedKeys = localStorage.getItem('ai-api-keys')
+    const usage = localStorage.getItem('ai-api-key-usage')
+    if (savedKeys) {
+      try {
+        const parsed = JSON.parse(savedKeys)
+        const usageParsed = usage ? JSON.parse(usage) : {}
+        setApiKeys(prev => ({
+          openai: { ...prev.openai, value: parsed.openai || '', isConnected: !!parsed.openai, lastUsed: usageParsed.openai },
+          anthropic: { ...prev.anthropic, value: parsed.anthropic || '', isConnected: !!parsed.anthropic, lastUsed: usageParsed.anthropic },
+          google: { ...prev.google, value: parsed.google || '', isConnected: !!parsed.google, lastUsed: usageParsed.google },
+        }))
+      } catch (err) {
+        console.error('Error loading API keys', err)
+      }
+    }
+  }, [])
+
+  const saveApiKeys = (updated: typeof apiKeys) => {
+    const keysToSave = {
+      openai: updated.openai.value,
+      anthropic: updated.anthropic.value,
+      google: updated.google.value,
+    }
+    const usageToSave = {
+      openai: updated.openai.lastUsed,
+      anthropic: updated.anthropic.lastUsed,
+      google: updated.google.lastUsed,
+    }
+    localStorage.setItem('ai-api-keys', JSON.stringify(keysToSave))
+    localStorage.setItem('ai-api-key-usage', JSON.stringify(usageToSave))
+  }
+
+  const toggleEdit = (id: string) => {
+    setApiKeys(prev => ({ ...prev, [id]: { ...prev[id], isEditing: !prev[id].isEditing, error: undefined } }))
+  }
+
+  const updateApiKey = (id: string, value: string) => {
+    setApiKeys(prev => ({ ...prev, [id]: { ...prev[id], value } }))
+  }
+
+  const handleTestSave = async (id: string) => {
+    const keyState = apiKeys[id]
+    if (!keyState.value.trim()) return
+    setApiKeys(prev => ({ ...prev, [id]: { ...prev[id], isTesting: true, error: undefined } }))
+    try {
+      const isValid = await testApiKey(id as 'openai' | 'anthropic' | 'google', keyState.value)
+      setApiKeys(prev => {
+        const updated = {
+          ...prev,
+          [id]: {
+            ...prev[id],
+            isTesting: false,
+            isConnected: isValid,
+            isEditing: !isValid,
+            lastUsed: isValid ? new Date().toISOString() : prev[id].lastUsed,
+            error: isValid ? undefined : 'Invalid API key'
+          }
+        }
+        if (isValid) saveApiKeys(updated)
+        return updated
+      })
+    } catch {
+      setApiKeys(prev => ({ ...prev, [id]: { ...prev[id], isTesting: false, isConnected: false, error: 'Connection failed' } }))
+    }
+  }
+
+  const connectedCount = Object.values(apiKeys).filter(k => k.isConnected).length
+  const hasConnectedKey = connectedCount > 0
   
   // Follow-up conversation state
   const [followUpMessages, setFollowUpMessages] = useState<{[key: string]: string}>({})
@@ -408,6 +506,18 @@ export default function DashboardPage() {
       
       if (processedResults) {
         setTestResults(processedResults);
+        const now = new Date().toISOString()
+        setApiKeys(prev => {
+          const updated = { ...prev }
+          selectedModels.forEach(modelId => {
+            const providerName = models.find(m => m.id === modelId)?.provider.toLowerCase()
+            if (providerName && updated[providerName]) {
+              updated[providerName].lastUsed = now
+            }
+          })
+          saveApiKeys(updated)
+          return updated
+        })
       } else {
         throw new Error('No valid results found in API response');
       }
@@ -444,10 +554,7 @@ export default function DashboardPage() {
           quality: 0
         })),
         totalCost: 0,
-        creditsUsed: 0,
-        remainingCredits: 0,
-        createdAt: new Date().toISOString(),
-        isDemoMode: false
+        createdAt: new Date().toISOString()
       };
       
       setTestResults(errorResults);
@@ -525,7 +632,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <SubscriptionBadge />
               {overviewError && (
                 <Badge variant="outline" className="text-orange-600 border-orange-200">
                   Mock Analytics
@@ -546,9 +652,9 @@ export default function DashboardPage() {
             </Button>
             <div className="flex items-center space-x-2 pl-2">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 text-sm font-medium">JD</span>
+                <span className="text-gray-600 text-sm font-medium">{initials}</span>
               </div>
-              <span className="text-sm font-medium text-gray-700">John Doe</span>
+              <span className="text-sm font-medium text-gray-700">{userName || 'User'}</span>
             </div>
           </div>
         </div>
@@ -558,18 +664,67 @@ export default function DashboardPage() {
         {/* Left Sidebar - Prompt Editor & Model Selection */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
           <div className="space-y-6">
-            {/* Subscription Status */}
-            <SubscriptionStatus onUpgrade={() => {
-              // Refresh page after successful upgrade
-              window.location.reload();
-            }} />
+            {/* API Key Management */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center">
+                  <Key className="w-4 h-4 mr-2" /> API Keys
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {apiProviders.map((provider) => {
+                  const keyState = apiKeys[provider.id]
+                  return (
+                    <div key={provider.id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{provider.name}</p>
+                          {keyState.lastUsed && (
+                            <p className="text-xs text-gray-500">Last used: {new Date(keyState.lastUsed).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                        {keyState.isConnected ? (
+                          <Badge className="bg-emerald-100 text-emerald-700">Connected</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-gray-600">Not Connected</Badge>
+                        )}
+                      </div>
+                      {keyState.isEditing ? (
+                        <div className="flex space-x-2">
+                          <Input
+                            type="password"
+                            value={keyState.value}
+                            onChange={(e) => updateApiKey(provider.id, e.target.value)}
+                            placeholder="Enter API key"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleTestSave(provider.id)}
+                            disabled={keyState.isTesting}
+                          >
+                            {keyState.isTesting ? 'Testing...' : 'Save'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => toggleEdit(provider.id)}>
+                          <Plus className="w-4 h-4 mr-1" /> {keyState.value ? 'Edit Key' : 'Add Key'}
+                        </Button>
+                      )}
+                      {keyState.error && <p className="text-xs text-red-600">{keyState.error}</p>}
+                    </div>
+                  )
+                })}
+                <div className="p-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded flex items-center">
+                  <Lock className="w-3 h-3 mr-1" /> Keys are stored securely in your browser.
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Demo Mode Alert */}
-            {testResults?.isDemoMode && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>Demo Mode:</strong> Showing sample responses. Sign in or upgrade for real AI results!
+            {!hasConnectedKey && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  Add an API key to start using Prompt Optimizer.
                 </AlertDescription>
               </Alert>
             )}
@@ -634,7 +789,7 @@ export default function DashboardPage() {
             {/* Run Test Button */}
             <Button
               onClick={handleRunTest}
-              disabled={isRunning || selectedModels.length === 0}
+              disabled={isRunning || selectedModels.length === 0 || !hasConnectedKey}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               size="lg"
             >
@@ -650,10 +805,15 @@ export default function DashboardPage() {
                 </>
               )}
             </Button>
-            
-            <p className="text-xs text-gray-500 text-center">
-              Each test uses 1 credit per model selected
-            </p>
+            {hasConnectedKey ? (
+              <p className="text-xs text-gray-500 text-center">
+                Tests run using your connected API keys.
+              </p>
+            ) : (
+              <p className="text-xs text-red-500 text-center">
+                Connect an API key to run tests.
+              </p>
+            )}
           </div>
         </div>
 
@@ -663,70 +823,25 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Model Conversation Comparison</h2>
             <p className="text-sm text-gray-600">Compare how different AI models respond to your prompts</p>
           </div>
+          {!hasConnectedKey && (
+            <Alert className="border-yellow-200 bg-yellow-50 mb-6">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                Connect an API key to run tests and view results here.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {testResults ? (
             <div>
-              {/* Credits Usage Summary */}
-              {testResults.creditsUsed > 0 && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">
-                        💳 Credits used: {testResults.creditsUsed}
-                      </p>
-                      <p className="text-xs text-blue-700">
-                        Remaining: {testResults.remainingCredits}
-                      </p>
-                    </div>
-                    {testResults.remainingCredits <= 5 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-200"
-                        onClick={() => window.location.href = '/pricing'}
-                      >
-                        <Crown className="w-4 h-4 mr-1" />
-                        Upgrade
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Demo Mode Banner */}
-              {testResults.isDemoMode && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">🎉 Demo Mode - Sample Responses</p>
-                      <p className="text-sm text-blue-100">Sign in to get real AI responses</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-white text-blue-600 border-white hover:bg-blue-50"
-                      onClick={() => window.location.href = '/sign-in'}
-                    >
-                      Sign In
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {(testResults?.results || []).map((result: any, index: number) => (
-                  <Card key={index} className={`h-fit ${testResults.isDemoMode ? 'border-blue-200' : ''}`}>
+                  <Card key={index} className="h-fit">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base font-medium capitalize flex items-center space-x-2">
                           <span>{result.model.replace('-', ' ')}</span>
-                          {testResults.isDemoMode && (
-                            <Badge className="text-xs bg-blue-100 text-blue-800">
-                              Demo
-                            </Badge>
-                          )}
                         </CardTitle>
                         <Badge
                           variant={result.cost === 0 ? "default" : result.cost < 0.01 ? "default" : "destructive"}
@@ -936,11 +1051,10 @@ export default function DashboardPage() {
           <div className="space-y-6">
             {/* Test Summary */}
             {testResults && (
-              <Card className={testResults.isDemoMode ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"}>
+              <Card className="bg-emerald-50 border-emerald-200">
                 <CardHeader className="pb-3">
-                  <CardTitle className={`text-base flex items-center ${testResults.isDemoMode ? 'text-blue-800' : 'text-emerald-800'}`}>
-                    {testResults.isDemoMode ? <AlertCircle className="w-4 h-4 mr-2" /> : <TrendingDown className="w-4 h-4 mr-2" />}
-                    {testResults.isDemoMode ? 'Demo Results' : 'Test Results'}
+                  <CardTitle className="text-base text-emerald-800 flex items-center">
+                    <TrendingDown className="w-4 h-4 mr-2" /> Test Results
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -950,29 +1064,10 @@ export default function DashboardPage() {
                       <span className="font-semibold">{testResults?.results?.length || 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Credits used</span>
-                      <span className="font-semibold">
-                        {testResults.isDemoMode ? '0 (Demo)' : testResults.creditsUsed || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Total cost</span>
-                      <span className="font-semibold">
-                        {testResults.isDemoMode ? 'Free' : `${(testResults.totalCost || 0).toFixed(4)}`}
-                      </span>
+                      <span className="font-semibold">{`${(testResults.totalCost || 0).toFixed(4)}`}</span>
                     </div>
                   </div>
-                  {testResults.isDemoMode && (
-                    <div className="mt-4 pt-3 border-t border-blue-200">
-                      <Button
-                        size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={() => window.location.href = '/sign-in'}
-                      >
-                        Sign In for Real Results
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}

@@ -4,7 +4,9 @@ import { PromptController } from '../controllers/promptController';
 import { TestController } from '../controllers/testController';
 import { AnalyticsController } from '../controllers/analyticsController';
 import { AIController } from '../controllers/aiController';
+import { ApiKeyController } from '../controllers/apiKeyController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { UserController } from '../controllers/userController';
 
 const router = Router();
 
@@ -14,6 +16,8 @@ const promptController = new PromptController();
 const testController = new TestController();
 const analyticsController = new AnalyticsController();
 const aiController = new AIController();
+const apiKeyController = new ApiKeyController();
+const userController = new UserController();
 
 // Health check route
 router.get('/health', (req, res) => {
@@ -28,16 +32,28 @@ router.get('/health', (req, res) => {
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.post('/auth/refresh', authController.refreshToken);
+router.post('/auth/logout', authMiddleware, authController.logout);
 
 // Auth routes (protected)
 router.get('/auth/profile', authMiddleware, authController.getProfile);
 
+// User profile & onboarding
+router.get('/users/me', authMiddleware, userController.getMe);
+router.put('/users/profile', authMiddleware, userController.updateProfile);
+router.get('/users/onboarding/status', authMiddleware, userController.onboardingStatus);
+
 // AI routes (NEW)
 router.post('/ai/compare', authMiddleware, aiController.compareModels);
-router.get('/ai/models', aiController.getAvailableModels);
+router.get('/ai/models', authMiddleware, apiKeyController.getAvailableModels);
 router.get('/ai/subscription/status', authMiddleware, aiController.getSubscriptionStatus);
 router.post('/ai/subscription/upgrade', authMiddleware, aiController.upgradeSubscription);
 router.post('/ai/subscription/cancel', authMiddleware, aiController.cancelSubscription);
+
+// API key management routes
+router.post('/keys', authMiddleware, apiKeyController.addOrUpdateKey);
+router.delete('/keys/:provider', authMiddleware, apiKeyController.deleteKey);
+router.get('/keys/status', authMiddleware, apiKeyController.getKeyStatus);
+router.get('/keys/models', authMiddleware, apiKeyController.getAvailableModels);
 
 // Legacy routes
 router.post('/prompts', authMiddleware, promptController.createPrompt);
