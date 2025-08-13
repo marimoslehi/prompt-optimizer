@@ -35,20 +35,64 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    const response = await fetch(url, {
-      headers: this.getAuthHeaders(),
-      ...options,
-    });
+    // Debug logging
+    console.log('🔍 API Request Details:');
+    console.log('  URL:', url);
+    console.log('  Method:', options.method || 'GET');
+    console.log('  Headers:', this.getAuthHeaders());
+    console.log('  Body:', options.body);
+    
+    try {
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders(),
+        ...options,
+      });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+      console.log('📡 Response Status:', response.status);
+      console.log('📡 Response Headers:', Object.fromEntries(response.headers.entries()));
+
+      // Get response text first to handle both JSON and error responses
+      const responseText = await response.text();
+      console.log('📡 Raw Response:', responseText);
+
+      if (!response.ok) {
+        // Try to parse error as JSON, otherwise use text
+        let errorMessage = `API Error: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = responseText || errorMessage;
+        }
+        console.error('❌ API Error:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Parse successful response
+      const data = JSON.parse(responseText);
+      console.log('✅ Parsed Response:', data);
+      return data;
+
+    } catch (error) {
+      console.error('💥 Request Failed:', error);
+      
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running on port 3001.');
+      }
+      
+      throw error;
     }
+  }
 
-    return response.json();
+  // Health check method for debugging
+  async health(): Promise<ApiResponse<any>> {
+    return this.request('/health');
   }
 
   // Auth API
   async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
+    console.log('🔐 Attempting login for:', credentials.email);
     return this.request<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -56,6 +100,8 @@ class ApiClient {
   }
 
   async register(userData: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
+    console.log('📝 Attempting registration for:', userData.email);
+    console.log('📝 Registration data:', { ...userData, password: '[HIDDEN]' });
     return this.request<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
