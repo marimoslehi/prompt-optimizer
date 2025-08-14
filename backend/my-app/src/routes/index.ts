@@ -1,3 +1,4 @@
+// backend/my-app/src/routes/index.ts
 import { Router } from 'express';
 import { AuthController } from '../controllers/authController';
 import { PromptController } from '../controllers/promptController';
@@ -34,7 +35,7 @@ router.post('/auth/refresh', authController.refreshToken);
 // Auth routes (protected)
 router.get('/auth/profile', authMiddleware, authController.getProfile);
 
-// AI routes (NEW)
+// AI routes
 router.post('/ai/compare', authMiddleware, aiController.compareModels);
 router.get('/ai/models', authMiddleware, apiKeyController.getAvailableModels);
 router.get('/ai/subscription/status', authMiddleware, aiController.getSubscriptionStatus);
@@ -47,21 +48,30 @@ router.delete('/keys/:provider', authMiddleware, apiKeyController.deleteKey);
 router.get('/keys/status', authMiddleware, apiKeyController.getKeyStatus);
 router.get('/keys/models', authMiddleware, apiKeyController.getAvailableModels);
 
-// Legacy routes
+// Prompt routes
 router.post('/prompts', authMiddleware, promptController.createPrompt);
 router.get('/prompts', authMiddleware, promptController.getPrompts);
 router.get('/prompts/:id', authMiddleware, promptController.getPrompt);
 router.put('/prompts/:id', authMiddleware, promptController.updatePrompt);
 router.delete('/prompts/:id', authMiddleware, promptController.deletePrompt);
 
+// Test routes
 router.post('/tests/run', authMiddleware, testController.runTest);
 router.get('/tests/:id', authMiddleware, testController.getTestResults);
 router.get('/tests/history', authMiddleware, testController.getTestHistory);
 
+// 🆕 NEW: Save test results (THIS IS THE KEY ENDPOINT!)
+router.post('/tests', authMiddleware, analyticsController.savePromptTest);
+
+// Analytics routes (existing - now with real data)
 router.get('/analytics/costs', authMiddleware, analyticsController.getCostAnalytics);
 router.get('/analytics/usage', authMiddleware, analyticsController.getUsageStats);
 router.get('/analytics/dashboard', authMiddleware, analyticsController.getDashboardOverview);
 
+// 🆕 NEW: Dashboard stats endpoint (THIS MAKES DASHBOARD REAL!)
+router.get('/user/stats', authMiddleware, analyticsController.getUserStats);
+
+// Subscription routes
 router.get('/subscription/status', authMiddleware, aiController.getSubscriptionStatus);
 router.post('/subscription/upgrade', authMiddleware, aiController.upgradeSubscription);
 router.post('/subscription/cancel', authMiddleware, aiController.cancelSubscription);
