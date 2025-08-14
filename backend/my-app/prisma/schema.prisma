@@ -1,0 +1,60 @@
+// backend/my-app/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  company   String?
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  promptTests PromptTest[]
+  
+  @@map("users")
+}
+
+model PromptTest {
+  id              String   @id @default(cuid())
+  userId          String
+  promptText      String
+  modelsSelected  String[] // Array of model IDs like ["gpt-4", "claude-3"]
+  totalCost       Float    @default(0)
+  totalTokens     Int      @default(0)
+  responseTimeMs  Int      @default(0)
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelResults ModelResult[]
+  
+  @@map("prompt_tests")
+}
+
+model ModelResult {
+  id             String   @id @default(cuid())
+  testId         String
+  modelId        String   // e.g., "gpt-4", "claude-3"
+  modelName      String   // e.g., "GPT-4", "Claude 3"
+  responseText   String?
+  tokensUsed     Int      @default(0)
+  cost           Float    @default(0)
+  responseTimeMs Int      @default(0)
+  qualityScore   Int      @default(0) // 0-100
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  promptTest PromptTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  
+  @@map("model_results")
+}
