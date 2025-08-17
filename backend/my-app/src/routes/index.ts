@@ -32,8 +32,13 @@ router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.post('/auth/refresh', authController.refreshToken);
 
+// 🆕 NEW: Google OAuth routes
+router.get('/auth/google', authController.googleAuth);
+router.get('/auth/google/callback', authController.googleCallback);
+
 // Auth routes (protected)
 router.get('/auth/profile', authMiddleware, authController.getProfile);
+router.post('/auth/change-password', authMiddleware, authController.changePassword);
 
 // AI routes
 router.post('/ai/compare', authMiddleware, aiController.compareModels);
@@ -59,16 +64,12 @@ router.delete('/prompts/:id', authMiddleware, promptController.deletePrompt);
 router.post('/tests/run', authMiddleware, testController.runTest);
 router.get('/tests/:id', authMiddleware, testController.getTestResults);
 router.get('/tests/history', authMiddleware, testController.getTestHistory);
-
-// 🆕 NEW: Save test results (THIS IS THE KEY ENDPOINT!)
 router.post('/tests', authMiddleware, analyticsController.savePromptTest);
 
-// Analytics routes (existing - now with real data)
+// Analytics routes
 router.get('/analytics/costs', authMiddleware, analyticsController.getCostAnalytics);
 router.get('/analytics/usage', authMiddleware, analyticsController.getUsageStats);
 router.get('/analytics/dashboard', authMiddleware, analyticsController.getDashboardOverview);
-
-// 🆕 NEW: Dashboard stats endpoint (THIS MAKES DASHBOARD REAL!)
 router.get('/user/stats', authMiddleware, analyticsController.getUserStats);
 
 // Subscription routes
