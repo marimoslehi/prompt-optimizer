@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Sparkles, Eye, EyeOff, ArrowLeft, Mail, Lock, Github, Chrome, Shield } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Sparkles, Eye, EyeOff, ArrowLeft, Mail, Lock, Chrome, Shield, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -17,9 +18,30 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
+
+  // Check for OAuth errors in URL
+  useEffect(() => {
+    const oauthError = searchParams.get('error')
+    if (oauthError) {
+      switch (oauthError) {
+        case 'oauth_cancelled':
+          setError('Google sign-in was cancelled')
+          break
+        case 'oauth_failed':
+          setError('Google sign-in failed. Please try again.')
+          break
+        default:
+          setError('Authentication failed. Please try again.')
+      }
+      // Clear error from URL
+      router.replace('/sign-in', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +58,7 @@ export default function SignInPage() {
         } else {
           sessionStorage.setItem("auth_token", token)
         }
-        toast({ title: "Signed in" })
+        toast({ title: "Signed in successfully" })
         router.push("/dashboard")
       } else {
         setError(res.message || "Login failed")
@@ -50,14 +72,23 @@ export default function SignInPage() {
     }
   }
 
-  const handleSocialSignIn = async (provider: string) => {
-    setIsLoading(true)
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true)
+    setError(null)
 
-    // Simulate social sign in
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    setIsLoading(false)
-    // Handle social sign in logic here
+    try {
+      // Redirect to backend Google OAuth endpoint
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      window.location.href = `${backendUrl}/auth/google`
+    } catch (err: any) {
+      setError('Failed to initiate Google sign-in')
+      toast({ 
+        title: "Google sign-in failed", 
+        description: "Please try again or use email/password", 
+        variant: "destructive" 
+      })
+      setIsGoogleLoading(false)
+    }
   }
 
   return (
@@ -87,25 +118,35 @@ export default function SignInPage() {
           <p className="text-slate-600">Sign in to your account to continue optimizing</p>
         </div>
 
-        {/* Social Sign In */}
-        <div className="space-y-3 mb-6">
+        {/* Error Alert */}
+        {error && (
+          <Alert className="mb-6 border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Google Sign In */}
+        <div className="mb-6">
           <Button
             variant="outline"
             className="w-full h-12 border-slate-300 hover:bg-slate-50 bg-transparent"
-            onClick={() => handleSocialSignIn("google")}
-            disabled={isLoading}
+            onClick={handleGoogleSignIn}
+            disabled={isLoading || isGoogleLoading}
           >
-            <Chrome className="w-5 h-5 mr-3" />
-            Continue with Google
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 border-slate-300 hover:bg-slate-50 bg-transparent"
-            onClick={() => handleSocialSignIn("github")}
-            disabled={isLoading}
-          >
-            <Github className="w-5 h-5 mr-3" />
-            Continue with GitHub
+            {isGoogleLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-3" />
+                Connecting to Google...
+              </>
+            ) : (
+              <>
+                <Chrome className="w-5 h-5 mr-3" />
+                Continue with Google
+              </>
+            )}
           </Button>
         </div>
 
@@ -132,6 +173,7 @@ export default function SignInPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-12"
                 required
+                disabled={isLoading || isGoogleLoading}
               />
             </div>
           </div>
@@ -150,6 +192,7 @@ export default function SignInPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10 h-12"
                 required
+                disabled={isLoading || isGoogleLoading}
               />
               <Button
                 type="button"
@@ -157,6 +200,7 @@ export default function SignInPage() {
                 size="sm"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading || isGoogleLoading}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </Button>
@@ -165,19 +209,30 @@ export default function SignInPage() {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Checkbox id="remember" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(!!checked)} />
+              <Checkbox 
+                id="remember" 
+                checked={rememberMe} 
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+                disabled={isLoading || isGoogleLoading}
+              />
               <Label htmlFor="remember" className="text-sm text-slate-600">
                 Remember me
               </Label>
             </div>
-            <Button variant="link" className="text-sm text-blue-600 hover:text-blue-700 p-0">
+            <Button 
+              variant="link" 
+              className="text-sm text-blue-600 hover:text-blue-700 p-0"
+              disabled={isLoading || isGoogleLoading}
+            >
               Forgot password?
             </Button>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <Button type="submit" className="w-full h-12 bg-blue-700 hover:bg-blue-800 text-white" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-blue-700 hover:bg-blue-800 text-white" 
+            disabled={isLoading || isGoogleLoading}
+          >
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -197,6 +252,7 @@ export default function SignInPage() {
               variant="link"
               className="text-blue-600 hover:text-blue-700 p-0 font-semibold"
               onClick={() => router.push("/sign-up")}
+              disabled={isLoading || isGoogleLoading}
             >
               Sign up for free
             </Button>
