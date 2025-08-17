@@ -1,3 +1,4 @@
+// frontend/lib/api.ts
 import { 
   ApiResponse, 
   AuthResponse, 
@@ -108,8 +109,54 @@ class ApiClient {
     });
   }
 
+  // NEW: Google OAuth methods
+  async loginWithGoogle(): Promise<void> {
+    console.log('🔗 Initiating Google OAuth login...');
+    // Redirect to backend Google OAuth endpoint
+    const googleAuthUrl = `${API_BASE_URL}/auth/google`;
+    window.location.href = googleAuthUrl;
+  }
+
+  // This method is called by the OAuth callback page
+  async verifyOAuthToken(token: string): Promise<ApiResponse<{ user: User }>> {
+    console.log('🔍 Verifying OAuth token...');
+    
+    // Temporarily set the token to make the profile request
+    const tempHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        headers: tempHeaders,
+      });
+
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        throw new Error('Invalid OAuth token');
+      }
+
+      const data = JSON.parse(responseText);
+      console.log('✅ OAuth token verified:', data);
+      return data;
+
+    } catch (error) {
+      console.error('❌ OAuth token verification failed:', error);
+      throw error;
+    }
+  }
+
   async getProfile(): Promise<ApiResponse<{ user: User }>> {
     return this.request<{ user: User }>('/auth/profile');
+  }
+
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<ApiResponse<any>> {
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Prompts API
@@ -168,6 +215,22 @@ class ApiClient {
 
   async getDashboardOverview(): Promise<ApiResponse<DashboardOverview>> {
     return this.request<DashboardOverview>('/analytics/dashboard');
+  }
+
+  async getUserStats(): Promise<ApiResponse<any>> {
+    return this.request('/user/stats');
+  }
+
+  // Utility methods
+  logout(): void {
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+    console.log('🚪 User logged out, tokens cleared');
+  }
+
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('auth_token') ?? sessionStorage.getItem('auth_token');
+    return !!token;
   }
 }
 
