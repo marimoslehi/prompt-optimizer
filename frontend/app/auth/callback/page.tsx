@@ -41,16 +41,34 @@ export default function OAuthCallbackPage() {
         if (token) {
           console.log('✅ OAuth token received, storing and redirecting...')
           
-          // Store token in localStorage (you could also use sessionStorage)
+          // Store token in localStorage
           localStorage.setItem('auth_token', token)
+          
+          // Check if this is a first login and store the flag
+          const isFirstLogin = searchParams.get('firstLogin')
+          console.log('🔍 First login check:', isFirstLogin)
+          
+          if (isFirstLogin === 'true') {
+            console.log('🎉 First time user detected, setting welcome flag')
+            localStorage.setItem('showWelcomeMessage', 'true')
+          }
           
           setStatus('success')
           setMessage('Sign-in successful! Redirecting to dashboard...')
           
-          toast({
-            title: "Signed in successfully",
-            description: "Welcome back to Prompt Optimizer!"
-          })
+          // Show appropriate toast message
+          if (isFirstLogin === 'true') {
+            toast({
+              title: "Welcome to Prompt Optimizer! 🎉",
+              description: "Your account has been created successfully!",
+              duration: 4000
+            })
+          } else {
+            toast({
+              title: "Signed in successfully",
+              description: "Welcome back to Prompt Optimizer!"
+            })
+          }
 
           // Redirect to dashboard after short delay
           setTimeout(() => {
