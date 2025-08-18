@@ -33,6 +33,13 @@ import { useDashboardOverview, useCostAnalytics, usePrompts } from "@/hooks/useA
 import { useAIService } from "@/lib/ai-service"
 import { useAIProviders } from "@/lib/ai-providers"
 
+// User data interface
+interface UserData {
+  firstName: string
+  lastName: string
+  email: string
+}
+
 const models = [
   // FREE MODELS (Real AI Responses)
   { 
@@ -184,12 +191,52 @@ const apiProviders = [
 ]
 
 export default function DashboardPage() {
+  // User data state
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [userLoading, setUserLoading] = useState(true)
+  
   const [selectedModels, setSelectedModels] = useState(["gpt-4", "claude-3-haiku", "gemini-1.5-flash"])
   const [prompt, setPrompt] = useState(
     "Analyze the following marketing strategy and provide actionable recommendations for improvement...",
   )
   const [isRunning, setIsRunning] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
+
+  // Load user data on component mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      setUserLoading(true)
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:3001/api/auth/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data.user) {
+              const user = result.data.user
+              setUserData({
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                email: user.email || ''
+              })
+              console.log('✅ User data loaded in prompt optimizer:', user.firstName, user.lastName)
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error)
+        }
+      }
+      setUserLoading(false)
+    }
+    
+    loadUserData()
+  }, [])
 
   // API Key Management
   const { testApiKey } = useAIProviders()
@@ -633,6 +680,24 @@ export default function DashboardPage() {
     console.error('Failed to save test results:', error);
   }
 };
+
+  // Helper function to get user display name and initials
+  const getUserDisplayInfo = () => {
+    if (userLoading) {
+      return { displayName: 'Loading...', initials: '...' }
+    }
+    
+    if (userData) {
+      const displayName = `${userData.firstName} ${userData.lastName}`.trim() || userData.email
+      const initials = `${userData.firstName?.[0] || ''}${userData.lastName?.[0] || ''}`.toUpperCase() || userData.email?.[0]?.toUpperCase() || 'U'
+      return { displayName, initials }
+    }
+    
+    return { displayName: 'User', initials: 'U' }
+  }
+
+  const { displayName, initials } = getUserDisplayInfo()
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -669,9 +734,9 @@ export default function DashboardPage() {
             </Button>
             <div className="flex items-center space-x-2 pl-2">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 text-sm font-medium">JD</span>
+                <span className="text-gray-600 text-sm font-medium">{initials}</span>
               </div>
-              <span className="text-sm font-medium text-gray-700">John Doe</span>
+              <span className="text-sm font-medium text-gray-700">{displayName}</span>
             </div>
           </div>
         </div>
@@ -1216,4 +1281,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
