@@ -23,6 +23,7 @@ import {
   Calendar,
   Globe
 } from 'lucide-react'
+import { useToast } from "@/hooks/use-toast"
 
 interface UserData {
   firstName: string
@@ -45,22 +46,87 @@ export default function AnalyticsDashboard() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [workspaceName, setWorkspaceName] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     loadUserData()
   }, [])
 
-  const loadUserData = () => {
+  // Welcome message effect for first-time users - runs only once
+  useEffect(() => {
+    const shouldShowWelcome = localStorage.getItem('showWelcomeMessage')
+    console.log('🔍 Checking for welcome message flag:', shouldShowWelcome)
+    
+    if (shouldShowWelcome === 'true') {
+      console.log('🎉 Showing welcome message for first-time user')
+      
+      // Remove the flag immediately to prevent multiple triggers
+      localStorage.removeItem('showWelcomeMessage')
+      
+      // Show welcome message after userData is loaded
+      const showWelcomeToast = () => {
+        if (userData) {
+          toast({
+            title: "Welcome to Prompt Optimizer! 🎉",
+            description: `Hi ${userData.firstName || 'there'}! Your account has been successfully created. Let's start optimizing your AI prompts!`,
+            duration: 6000,
+          })
+          console.log('🎉 Welcome toast shown!')
+        } else {
+          // If userData not loaded yet, try again in 500ms
+          setTimeout(showWelcomeToast, 500)
+        }
+      }
+      
+      setTimeout(showWelcomeToast, 1000)
+    }
+  }, [userData, toast]) // userData as dependency to show toast when data loads
+
+  const loadUserData = async () => {
     setIsLoading(true)
     try {
-      // Try to get onboarding data
+      // First try to get user data from backend using the auth token
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:3001/api/auth/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data.user) {
+              const user = result.data.user
+              setUserData({
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                email: user.email || '',
+                company: user.company || '',
+                role: user.role || '',
+                useCase: '',
+                teamSize: ''
+              })
+              console.log('✅ User data loaded from backend:', user.firstName, user.lastName)
+              setIsLoading(false)
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error)
+        }
+      }
+
+      // Fallback to localStorage (existing code for onboarding users)
       const onboardingStr = localStorage.getItem('prompt_optimizer_onboarding')
       if (onboardingStr) {
         const onboardingData: OnboardingData = JSON.parse(onboardingStr)
         setUserData(onboardingData.userData)
         setWorkspaceName(onboardingData.preferences?.workspaceName || 'My Workspace')
       } else {
-        // Fallback: try individual stored values
+        // Final fallback: try individual stored values
         const name = localStorage.getItem('user_name')
         const email = localStorage.getItem('user_email')
         const workspace = localStorage.getItem('workspace_name')
@@ -111,7 +177,7 @@ export default function AnalyticsDashboard() {
     )
   }
 
-  const userName = userData ? `${userData.firstName} ${userData.lastName}` : 'there'
+  const userName = userData ? `${userData.firstName} ${userData.lastName}`.trim() : 'there'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -254,7 +320,7 @@ export default function AnalyticsDashboard() {
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">
-                      {userData?.firstName?.[0]}{userData?.lastName?.[0]}
+                      {userData?.firstName?.[0] || 'U'}{userData?.lastName?.[0] || ''}
                     </span>
                   </div>
                   <div>
