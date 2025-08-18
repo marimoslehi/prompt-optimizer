@@ -130,7 +130,7 @@ export class AuthController {
         { expiresIn: '7d' }
       );
 
-      // Return user data (WITHOUT password)
+      // Return user data (WITHOUT password) and indicate it's a first login
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
@@ -142,7 +142,8 @@ export class AuthController {
             firstName: user.firstName,
             lastName: user.lastName,
           },
-          token
+          token,
+          isFirstLogin: true // Always true for new registrations
         }
       });
 
@@ -227,7 +228,8 @@ export class AuthController {
             firstName: user.firstName,
             lastName: user.lastName,
           },
-          token
+          token,
+          isFirstLogin: false // Always false for existing user logins
         }
       });
 
@@ -240,7 +242,7 @@ export class AuthController {
     }
   };
 
-  // NEW: Google OAuth initiation
+  // Google OAuth initiation
   googleAuth = async (req: Request, res: Response) => {
     try {
       console.log('🔗 Initiating Google OAuth...');
@@ -271,7 +273,7 @@ export class AuthController {
     }
   };
 
-  // NEW: Google OAuth callback
+  // Google OAuth callback
   googleCallback = async (req: Request, res: Response) => {
     try {
       const { code, state, error } = req.query;
@@ -298,6 +300,7 @@ export class AuthController {
       const ticket = await googleClient.verifyIdToken({
         idToken: tokens.id_token!,
         audience: process.env.GOOGLE_CLIENT_ID,
+        maxExpiry: 86400 // 24 hours
       });
 
       const payload = ticket.getPayload();
@@ -310,8 +313,8 @@ export class AuthController {
 
       console.log('✅ Google user info received:', { email, googleId, firstName, lastName });
 
-      // Find or create user in database
-      let user = await prisma.user.findFirst({
+      // Find existing user first
+      const existingUser = await prisma.user.findFirst({
         where: {
           OR: [
             { email: email! },
@@ -320,15 +323,21 @@ export class AuthController {
         }
       });
 
-      if (user) {
+      let user;
+      let isFirstLogin = false;
+
+      if (existingUser) {
         // Update existing user with Google ID if not set
-        if (!user.googleId) {
+        if (!existingUser.googleId) {
           user = await prisma.user.update({
-            where: { id: user.id },
+            where: { id: existingUser.id },
             data: { googleId }
           });
+        } else {
+          user = existingUser;
         }
         console.log('✅ Existing user found and updated:', user.email);
+        isFirstLogin = false; // Existing user
       } else {
         // Create new user
         user = await prisma.user.create({
@@ -341,6 +350,7 @@ export class AuthController {
           }
         });
         console.log('✅ New Google user created:', user.email);
+        isFirstLogin = true; // New user
       }
 
       // Generate JWT token
@@ -350,11 +360,11 @@ export class AuthController {
         { expiresIn: '7d' }
       );
 
-      console.log('✅ JWT token generated for Google user:', user.email);
+      console.log('✅ JWT token generated for Google user:', user.email, 'First login:', isFirstLogin);
 
-      // Redirect to frontend with token
+      // Redirect to frontend with token and first login flag
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&firstLogin=${isFirstLogin}`);
 
     } catch (error: any) {
       console.error('❌ Google OAuth callback error:', error);
